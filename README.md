@@ -7,4 +7,5 @@
 - bootsector.gpr/bootsector.rep: Ghidra (9.0.2) project disassembling bootsector and the early stages of 0000Kernel.BIN.C (only up to the 64bit switch)
 - Compress.HC.Z: Kernel/Compress.HC.Z extracted from TempleOS.ISO
 - tosdeflate.go: utility to decompress TempleOS '.Z' files. The decompression routines are copied from GIMP and therefore are probably GPL licensed (although they copied it from TempleOS, which is Public Domain and Terry copied it from a magazine which is... ?)
-
+- tosz: is a go library to decompress TempleOS '.Z' files
+- redseafs: FUSE file system to mount RedSea filesystems inside ISO9660. Similar to the original python https://github.com/obecebo/redseafs but only supports reading and automatically decompresses '.Z' files.
