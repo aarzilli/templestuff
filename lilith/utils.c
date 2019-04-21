@@ -10,3 +10,9 @@ void *malloc_executable_aligned(size_t size, int64_t alignment, int64_t misalign
 	//res(I64 *)[-1]=ptr-res; // wtf is this?
 	return res;
 }
+
+char *strclone(char *s) {
+	char *r = malloc(strlen(s)+1);
+	strcpy(r, s);
+	return r;
+}

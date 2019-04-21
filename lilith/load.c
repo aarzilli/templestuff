@@ -27,11 +27,15 @@
 #define LDF_JUST_LOAD		2
 #define LDF_SILENT		4
 
+#define HTT_EXPORT_SYS_SYM      0x00001 //CHashExport
+
+#define HTF_IMM                 0x08000000
+
 struct hash_t symbols;
 
 // LoadPass1 executes some of the relocations specified in the "patch
 // table". Other relocations are executed by LoadPass2.
-void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags) {
+void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bool *pok) {
 	if (DEBUG) {
 		printf("\n");
 	}
@@ -54,24 +58,27 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags) {
 		char *st_ptr = (char *)cur;
 		cur += strlen(st_ptr) + 1;
 
-		printf("%04lx %d relocation etype=%x i=%x <%s>\n", (uint8_t *)st_ptr - patch_table - 5, count, etype, i, st_ptr);
+		if (DEBUG) {
+			printf("%04lx %d relocation etype=%x i=%x <%s>\n", (uint8_t *)st_ptr - patch_table - 5, count, etype, i, st_ptr);
+		}
 
 		switch (etype) {
 		case IET_REL32_EXPORT: // fallthrough
 		case IET_IMM32_EXPORT: // fallthrough
 		case IET_REL64_EXPORT: // fallthrough
 		case IET_IMM64_EXPORT: {
-			uint64_t val;
+			struct export_t *ex = symbols_put(st_ptr, HTT_EXPORT_SYS_SYM|HTF_IMM, 0);
+
 			if ((etype == IET_IMM32_EXPORT) || (etype == IET_IMM64_EXPORT)) {
-				val = i;
+				ex->val = i;
 			} else {
-				val = (uint64_t)(module_base) + i;
+				ex->val = (uint64_t)(module_base) + i;
 			}
 
 			if (DEBUG) {
-				printf("\texport relocation for %s, value %lx\n", st_ptr, val);
+				printf("\texport relocation for %s, value %lx\n", st_ptr, ex->val);
 			}
-			//TODO: implement
+
 			break;
 		}
 
@@ -86,7 +93,7 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags) {
 		case IET_REL_I64: // fallthrough
 		case IET_IMM_I64: // fallthrough
 			cur = ((uint8_t *)st_ptr)-5;
-			load_one_import(&cur, module_base, ld_flags);
+			load_one_import(&cur, module_base, ld_flags, pok);
 			break;
 
 		case IET_ABS_ADDR: {
@@ -114,7 +121,7 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags) {
 			// note that MAP_32BIT is fundamental, this will break if the ptr3 can't be represented in 32bits, if linux ever stops honoring MAP_32BIT we're going to be fucked hard.
 
 			if (*st_ptr) {
-				//TODO: add this to hash table HTT_EXPORT_SYS_SYM|HTF_IMM with val = ptr3
+				symbols_put(st_ptr, HTT_EXPORT_SYS_SYM|HTF_IMM, (uint64_t)ptr3);
 			}
 
 			int64_t cnt = i;
@@ -138,7 +145,7 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags) {
 			uint8_t *ptr3 = malloc(sz);
 
 			if (*st_ptr) {
-				//TODO: add this to hash table HTT_EXPORT_SYS_SYM|HTF_IMM with val = ptr3
+				symbols_put(st_ptr, HTT_EXPORT_SYS_SYM|HTF_IMM, (uint64_t)ptr3);
 			}
 
 			int64_t cnt = i;
@@ -169,9 +176,10 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags) {
 	}
 }
 
-void load_one_import(uint8_t **psrc, uint8_t *module_base, int64_t ld_flags) {
+void load_one_import(uint8_t **psrc, uint8_t *module_base, int64_t ld_flags, bool *pok) {
 	uint8_t *src = *psrc;
 	bool first = true;
+	struct export_t *tmpex = NULL;
 
 	for(;;) {
 		uint8_t etype = *src;
@@ -191,50 +199,57 @@ void load_one_import(uint8_t **psrc, uint8_t *module_base, int64_t ld_flags) {
 			} else {
 				first=false;
 
-				//TODO: implement
-
-				/*
-				tmpex=HashFind(st_ptr, Fs->hash_table,HTG_ALL-HTT_IMPORT_SYS_SYM)
-				if (!tmpex) {
-					if (!(ld_flags & LDF_SILENT))
-  						"Unresolved Reference:%s\n",st_ptr;
-					tmpiss=CAlloc(sizeof(CHashImport));
-					tmpiss->str=StrNew(st_ptr);
-					tmpiss->type=HTT_IMPORT_SYS_SYM;
-					tmpiss->module_header_entry=st_ptr-5;
-					tmpiss->module_base=module_base;
-					HashAdd(tmpiss,Fs->hash_table);
+				tmpex = hash_get(&symbols, st_ptr);
+				if (tmpex == NULL) {
+					fprintf(stderr, "Unresolved Reference: %s\n", st_ptr);
+					*pok = false;
 				}
-				*/
+
+				//TODO: TempleOS can actually deal with some symbols being loaded after the fact, maybe lilith should too?
 			}
 		}
 		if (DEBUG) {
 			printf("\tload_one_import at %lx relocation etype=%x i=%lx <%s>\n", (uint8_t *)st_ptr - *psrc - 5, etype, i, st_ptr);
 		}
 
-		//TODO: implement
-		/*
 		if (tmpex) {
 			void *ptr2=module_base+i;
-			if (tmpex->type & HTT_FUN) {
-				i=tmpex(CHashFun *)->exe_addr;
-			} else if (tmpex->type & HTT_GLBL_VAR) {
-				i=tmpex(CHashGlblVar *)->data_addr;
-			} else {
-				i=tmpex->val;
-			}
+			i = tmpex->val;
 			switch (etype) {
-			case IET_REL_I8:  *ptr2(U8 *) =i-ptr2-1; break;
-			case IET_IMM_U8:  *ptr2(U8 *) =i;  break;
-			case IET_REL_I16: *ptr2(U16 *)=i-ptr2-2; break;
-			case IET_IMM_U16: *ptr2(U16 *)=i; break;
-			case IET_REL_I32: *ptr2(U32 *)=i-ptr2-4; break;
-			case IET_IMM_U32: *ptr2(U32 *)=i; break;
-			case IET_REL_I64: *ptr2(I64 *)=i-ptr2-8; break;
-			case IET_IMM_I64: *ptr2(I64 *)=i; break;
+			case IET_REL_I8:
+				*((uint8_t *)ptr2) = (uint8_t)(i-(uint64_t)ptr2-1);
+				break;
+			case IET_IMM_U8:
+				*((uint8_t *)ptr2) = i;
+				break;
+			case IET_REL_I16:
+				*((uint16_t *)ptr2) = (uint16_t)(i-(uint64_t)ptr2-1);
+				break;
+			case IET_IMM_U16:
+				*((uint16_t *)ptr2) = i;
+				break;
+			case IET_REL_I32:
+				*((uint32_t *)ptr2) = (uint32_t)(i-(uint64_t)ptr2-1);
+				break;
+			case IET_IMM_U32:
+				*((uint32_t *)ptr2) = i;
+				break;
+			case IET_REL_I64:
+				*((uint64_t *)ptr2) = (uint64_t)(i-(uint64_t)ptr2-1);
+				break;
+			case IET_IMM_I64:
+				*((uint64_t *)ptr2) = i;
+				break;
 			}
 		}
-		*/
 	}
 	*psrc = src-1;
+}
+
+struct export_t *symbols_put(char *key, uint32_t type, uint64_t val) {
+	struct export_t *ex = (struct export_t*)malloc(sizeof(struct export_t));
+	ex->type = type;
+	ex->val = val;
+	hash_put(&symbols, strclone(key), ex);
+	return ex;
 }
