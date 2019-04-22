@@ -34,7 +34,7 @@ struct export_t {
 	uint64_t val;
 };
 
-void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bool *pok);
+void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bool *pok, void **pentry_p);
 void load_one_import(uint8_t **patch_table, uint8_t *module_base, int64_t ld_flags, bool *pok);
 struct export_t *symbols_put(char *key, uint32_t type, uint64_t val);
 

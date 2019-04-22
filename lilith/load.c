@@ -35,8 +35,8 @@ struct hash_t symbols;
 
 // LoadPass1 executes some of the relocations specified in the "patch
 // table". Other relocations are executed by LoadPass2.
-void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bool *pok) {
-	if (DEBUG) {
+void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bool *pok, void **pentry) {
+	if (DEBUG_LOAD_PASS1) {
 		printf("\n");
 	}
 	uint8_t *cur = patch_table;
@@ -44,7 +44,7 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bo
 	for (;;) {
 		uint8_t etype = *cur;
 		if (etype == IET_END) {
-			if (DEBUG) {
+			if (DEBUG_LOAD_PASS1) {
 				printf("first relocation pass done after %d relocations\n", count);
 			}
 			break;
@@ -58,7 +58,7 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bo
 		char *st_ptr = (char *)cur;
 		cur += strlen(st_ptr) + 1;
 
-		if (DEBUG) {
+		if (DEBUG_LOAD_PASS1) {
 			printf("%04lx %d relocation etype=%x i=%x <%s>\n", (uint8_t *)st_ptr - patch_table - 5, count, etype, i, st_ptr);
 		}
 
@@ -75,7 +75,7 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bo
 				ex->val = (uint64_t)(module_base) + i;
 			}
 
-			if (DEBUG) {
+			if (DEBUG_LOAD_PASS1) {
 				printf("\texport relocation for %s, value %lx\n", st_ptr, ex->val);
 			}
 
@@ -98,7 +98,7 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bo
 
 		case IET_ABS_ADDR: {
 			uint32_t cnt = i;
-			if (DEBUG) {
+			if (DEBUG_LOAD_PASS1) {
 				printf("\tabsolute address relocation (cnt = %d)\n", cnt);
 			}
 			for (uint32_t j = 0; j < cnt; j++) {
@@ -125,7 +125,7 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bo
 			}
 
 			int64_t cnt = i;
-			if (DEBUG) {
+			if (DEBUG_LOAD_PASS1) {
 				printf("\tcode heap allocation of size %x with %ld relocations (mapped to %p)\n", sz, cnt, ptr3);
 			}
 			for (int64_t j = 0; j < cnt; ++j) {
@@ -149,7 +149,7 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bo
 			}
 
 			int64_t cnt = i;
-			if (DEBUG) {
+			if (DEBUG_LOAD_PASS1) {
 				printf("\tdata heap allocation of size %lx with %ld relocations (mapped to %p)\n", sz, cnt, ptr3);
 			}
 			for (int64_t j = 0; j < cnt; ++j) {
@@ -163,8 +163,9 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bo
 		}
 
 		case IET_MAIN:
-			if (DEBUG) {
-				printf("\trelocation type unhandled in this pass\n");
+			*pentry = module_base+i;
+			if (DEBUG_LOAD_PASS1) {
+				printf("\texecutable entry point %p\n", *pentry);
 			}
 			break;
 
@@ -208,7 +209,7 @@ void load_one_import(uint8_t **psrc, uint8_t *module_base, int64_t ld_flags, boo
 				//TODO: TempleOS can actually deal with some symbols being loaded after the fact, maybe lilith should too?
 			}
 		}
-		if (DEBUG) {
+		if (DEBUG_LOAD_PASS1) {
 			printf("\tload_one_import at %lx relocation etype=%x i=%lx <%s>\n", (uint8_t *)st_ptr - *psrc - 5, etype, i, st_ptr);
 		}
 

@@ -9,3 +9,4 @@
 - tosdeflate.go: utility to decompress TempleOS '.Z' files. The decompression routines are copied from GIMP and therefore are probably GPL licensed (although they copied it from TempleOS, which is Public Domain and Terry copied it from a magazine which is... ?)
 - tosz: is a go library to decompress TempleOS '.Z' files
 - redseafs: FUSE file system to mount RedSea filesystems inside ISO9660. Similar to the original python https://github.com/obecebo/redseafs but only supports reading and automatically decompresses '.Z' files.
+- TempleOS.java is a ghidra script to annotate a TempleOS binary using its own patch table.

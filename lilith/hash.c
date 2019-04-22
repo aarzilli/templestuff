@@ -19,6 +19,7 @@ struct export_t *hash_get(struct hash_t *h, char *key) {
 }
 
 void hash_put(struct hash_t *h, char *key, struct export_t *val) {
+	//TODO: deal with duplicates
 	int idx = hashfn(key) % h->sz;
 	struct hash_entry_t *e = &(h->h[idx]);
 	if (e->key == NULL) {

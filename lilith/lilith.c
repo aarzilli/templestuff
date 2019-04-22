@@ -9,7 +9,8 @@
 #include <stdint.h>
 #include <sys/mman.h>
 
-#define DEBUG false
+#define DEBUG true
+#define DEBUG_LOAD_PASS1 false
 
 #include "defs.h"
 #include "utils.c"
@@ -96,16 +97,21 @@ int main(int argc, char *argv[]) {
 	if (DEBUG) {
 		printf("module_base %p\n", module_base);
 	}
-
+	
+	int64_t ld_flags = 0;
+	void *entry = NULL;
 	bool ok;
-	load_pass1((uint8_t *)(mem + patch_table_offset), module_base, 0, &ok);
+	load_pass1((uint8_t *)(mem + patch_table_offset), module_base, ld_flags, &ok, &entry);
+	if (DEBUG) {
+		printf("Entry Point %p\n", entry);
+	}
 	if (!ok) {
 		fflush(stdout);
 		fprintf(stderr, "Load failed due to unresolved symbols.\n");
 		exit(EXIT_FAILURE);
 	}
-
-	//TODO:
-	// - LoadPass2
+	
+	if (((ld_flags&LDF_JUST_LOAD) == 0) && (entry != NULL)) {
+		//TODO: jump to entry
+	}
 }
-
