@@ -10,3 +10,4 @@
 - tosz: is a go library to decompress TempleOS '.Z' files
 - redseafs: FUSE file system to mount RedSea filesystems inside ISO9660. Similar to the original python https://github.com/obecebo/redseafs but only supports reading and automatically decompresses '.Z' files.
 - TempleOS.java is a ghidra script to annotate a TempleOS binary using its own patch table.
+- HelloWorld/* is a simple Hello World program in HolyC both in source and compiled format.
