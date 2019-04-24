@@ -47,6 +47,21 @@ struct CWinScroll {
 	uint8_t    color,pad[3];
 };
 
+#define MEM_HEAP_HASH_SIZE 1024
+#define MEM_PAG_SIZE (1<<MEM_PAG_BITS)
+
+struct CHeapCtrl {
+	struct CBlkPool *bp; // 0x0
+	uint32_t   hc_signature, pad; // 0x8, 0xa
+	int64_t   locked_flags, alloced_u8s, used_u8s; // 0x10, 0x18, 0x20
+	struct CTask *mem_task; // 0x28
+	struct CMemBlk *next_mem_blk, *last_mem_blk; // 0x30, 0x38
+	struct CMemBlk *last_mergable; // 0x40
+	struct CMemUnused *malloc_free_lst;
+	struct CMemUsed *next_um,*last_um;
+	struct CMemUnused *heap_hash[MEM_HEAP_HASH_SIZE/sizeof(uint8_t *)];
+};
+
 struct CTask { //The Fs segment reg points to current CTask.
 	struct CTask *addr; //Self-addressed ptr
 	uint32_t   task_signature,win_inhibit;
@@ -131,12 +146,26 @@ int arch_prctl(int code, unsigned long addr) {
 	return syscall(SYS_arch_prctl, code, addr);
 }
 
+#define DATA_HEAP_SIZE 10000 * MEM_PAG_SIZE
+#define CODE_HEAP_SIZE 10000 * MEM_PAG_SIZE
+
 void init_templeos(struct templeos_thread *t) {
 	t->Gs = (struct CCPU *)calloc(1, sizeof(struct CCPU));
 	t->Gs->addr = t->Gs;
 	t->Fs = (struct CTask *)calloc(1, sizeof(struct CTask));
 	t->Fs->addr = t->Fs;
 	t->Fs->gs = t->Gs;
+	t->Fs->task_signature = 0x536b7354; //TskS
+	
+	struct CBlkPool *data_bp = (struct CBlkPool *)malloc(DATA_HEAP_SIZE * sizeof(uint8_t));
+	register_templeos_memory(data_bp, DATA_HEAP_SIZE * sizeof(uint8_t));
+	struct CBlkPool *code_bp = (struct CBlkPool *)malloc_executable_aligned(CODE_HEAP_SIZE * sizeof(uint8_t), MEM_PAG_SIZE, 0);
+	
+	blk_pool_init(data_bp, DATA_HEAP_SIZE / MEM_PAG_SIZE);
+	blk_pool_init(code_bp, CODE_HEAP_SIZE / MEM_PAG_SIZE);
+	
+	t->Fs->data_heap = heap_ctrl_init(data_bp, t->Fs);
+	t->Fs->code_heap = heap_ctrl_init(code_bp, t->Fs);
 }
 	
 void enter_templeos(struct templeos_thread *t) {
@@ -265,4 +294,54 @@ bool is_templeos_memory(uint64_t p) {
 		}
 	}
 	return false;
+}
+
+void blk_pool_init(struct CBlkPool *bp, int64_t pags) {
+	int64_t num;
+	struct CMemBlk *m;
+	memset(bp,0,sizeof(struct CBlkPool));
+	m=(struct CMemBlk *)((((uint64_t)bp)+sizeof(struct CBlkPool)+MEM_PAG_SIZE-1)&~(MEM_PAG_SIZE-1)); // I'm iffy about this, this could be wrong
+	num=((int64_t)bp+(pags<<MEM_PAG_BITS)-(int64_t)m)>>MEM_PAG_BITS;
+	bp->alloced_u8s=(pags-num)<<MEM_PAG_BITS; //Compensate before num added.
+	blk_pool_add(bp,m,num);
+}
+
+struct CMemBlk {
+	struct CMemBlk *next,*last;
+	uint32_t   mb_signature,pags;
+};
+
+#define MBS_USED_SIGNATURE_VAL          (uint32_t)0x7355424d
+#define MBS_UNUSED_SIGNATURE_VAL        (uint32_t)0x6e55424d
+
+void blk_pool_add(struct CBlkPool *bp, struct CMemBlk *m, int64_t pags) {
+	m->next=bp->mem_free_lst;
+	m->pags=pags;
+	m->mb_signature=MBS_UNUSED_SIGNATURE_VAL;
+	bp->alloced_u8s+=pags<<MEM_PAG_BITS;
+	bp->mem_free_lst=m;
+}
+
+struct CMemUsed {
+	struct CHeapCtrl *hc;
+	uint8_t    *caller1,*caller2;
+	struct CMemUsed *next,*last;
+	int64_t   size;
+};
+
+#define HEAP_CTRL_SIGNATURE_VAL 0x56536348
+
+struct CHeapCtrl *heap_ctrl_init(struct CBlkPool *bp, struct CTask *task) {
+	struct CHeapCtrl *hc = (struct CHeapCtrl *)calloc(1, sizeof(struct CHeapCtrl));
+	hc->hc_signature = HEAP_CTRL_SIGNATURE_VAL; // mov [param2+0x8], blah
+	hc->mem_task = task; // mov [param2+0x28], task
+	hc->bp = bp; // mov [param2] = bp
+	
+	// que_init...
+	hc->next_mem_blk = (struct CMemBlk *)(&hc->next_mem_blk);
+	hc->last_mem_blk = (struct CMemBlk *)(&hc->next_mem_blk);
+	
+	hc->last_mergable = NULL;
+	hc->next_um=hc->last_um=(struct CMemUsed *)(((uint8_t *)(&hc->next_um))-offsetof(struct CMemUsed, next));
+	return hc;
 }

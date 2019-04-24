@@ -13,6 +13,7 @@
 #include <sys/syscall.h>
 #include <signal.h>
 #include <ucontext.h>
+#include <stddef.h>
 
 #define DEBUG true
 #define DEBUG_LOAD_PASS1 false

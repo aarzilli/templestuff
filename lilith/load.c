@@ -254,6 +254,8 @@ void load_one_import(uint8_t **psrc, uint8_t *module_base, int64_t ld_flags, boo
 	*psrc = src-1;
 }
 
+off_t cli_patch_table[] = { 0x5a87, 0x550a };
+
 void load_bin(char *path, uint64_t ld_flags) {
 	if ((ld_flags&LDF_KERNEL) != 0) {
 		ld_flags |= LDF_JUST_LOAD;
@@ -323,6 +325,14 @@ void load_bin(char *path, uint64_t ld_flags) {
 		printf("misalignment %ld (module_align %ld)\n", misalignment, module_align);
 		printf("new location at %p\n", xmem);
 	}
+	
+	if ((ld_flags & LDF_KERNEL) != 0) {
+		// replaces some CLI and STI with NOPs
+		for (int i = 0; i < sizeof(cli_patch_table)/sizeof(off_t); i++) {
+			patch_instruction(mem, cli_patch_table[i], 0xfa, 0x90);
+		}
+		
+	}
 
 	void *module_base = (void *)((char *)mem + TOSB_HEADER_SIZE);
 
@@ -375,4 +385,10 @@ struct export_t *symbols_put(char *key, uint32_t type, uint64_t val, void* modul
 	ex->module_base = (uint64_t)module_base;
 	hash_put(&symbols, strclone(key), ex);
 	return ex;
+}
+
+void patch_instruction(void *mem, off_t off, uint8_t original, uint8_t replacement) {
+	if (((uint8_t *)mem)[off] == original) {
+		((uint8_t *)mem)[off] = replacement;
+	}
 }
