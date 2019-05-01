@@ -253,11 +253,6 @@ void load_kernel(char *path) {
 
 	if (DEBUG) {
 		printf("loaded at %p\n", mem);
-
-		for (int i = 0; i < 10; i++) {
-			printf("%x ", ((unsigned char*)mem)[i]);
-		}
-		printf("\n");
 	}
 
 	// The code that follows is adapted from Load() in D:/Kernel/KLoad.HC.Z
@@ -322,15 +317,20 @@ void load_kernel(char *path) {
 
 	load_pass1((uint8_t *)(mem + patch_table_offset), module_base);
 	
-	// replaces some CLI and STI with NOPs
+	// kernel patching //
+	
+	// replaces some CLI and STI instructions with NOPs
 	kernel_patch_instruction("_MALLOC", 0x4c, 0xfa, 0x90);
 	kernel_patch_instruction("MemPagAlloc", 0x27, 0xfa, 0x90);
 	kernel_patch_instruction("_FREE", 0x7a, 0xfa, 0x90);
 	kernel_patch_instruction("_HASH_ADD", 0x1c, 0xfa, 0x90);
-	
+	kernel_patch_instruction("ChkOnStk", 0x17, 0xfa, 0x90);
+	kernel_patch_instruction("Panic", 0x16, 0xfa, 0x90);
 	
 	// Patch some kernel functions with our own stuff
 	trampoline_kernel_patch("RawPutChar", &putchar_asm_wrapper);
+	trampoline_kernel_patch("DrvLock", &drvlock_asm_wrapper);
+	trampoline_kernel_patch("RedSeaFileFind", &redseafilefind_asm_wrapper);
 	
 	// the kernel needs to know where it's loaded, the 16bit startup code would do this
 	kernel_patch_var64("mem_boot_base", (uint64_t)module_base);

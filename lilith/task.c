@@ -142,6 +142,71 @@ struct CTask { //The Fs segment reg points to current CTask.
 	int64_t   user_data;
 };
 
+struct CDrv {
+  int64_t   locked_flags;
+  uint32_t   dv_signature;
+  uint8_t    drv_let,pad;
+  uint16_t   fs_type;
+  int64_t   drv_offset,
+        size,
+        prt_num,
+        file_system_info_sect,
+        fat1,fat2,
+        root_clus,
+        data_area,
+        spc; //sectors per clus
+  int64_t fat32_local_time_offset;
+  struct CTask *owning_task;
+  struct CBlkDev *bd;
+
+  struct CFAT32FileInfoSect *fis;
+  int64_t   fat_blk_dirty,
+        cur_fat_blk_num;
+  uint32_t   *cur_fat_blk;
+  struct CFreeLst *next_free,*last_free;
+};
+
+struct CBlkDev {
+  struct CBlkDev *lock_fwding; //If two blkdevs on same controller, use just one lock
+  int64_t   locked_flags;
+  uint32_t   bd_signature,
+        type,flags;
+  uint8_t    first_drv_let,unit,pad[2];
+  uint32_t   base0,base1,
+        blk_size;
+  int64_t   drv_offset,init_root_dir_blks,
+        max_blk;
+  uint16_t   *dev_id_record;
+  uint8_t    *RAM_dsk,
+        *file_dsk_name;
+  struct CFile *file_dsk;
+  struct CTask *owning_task;
+  double   last_time;
+  uint32_t   max_reads,max_writes;
+};
+
+struct CBlkDevGlbls {
+  struct CBlkDev *blkdevs;
+  uint8_t    *dft_iso_filename;      //$TX,"\"::/Tmp/CDDVD.ISO\"",D="DFT_ISO_FILENAME"$
+  uint8_t    *dft_iso_c_filename;    //$TX,"\"::/Tmp/CDDVD.ISO.C\"",D="DFT_ISO_C_FILENAME"$
+  uint8_t    *tmp_filename;
+  uint8_t    *home_dir;
+  struct CCacheBlk *cache_base,*cache_ctrl,**cache_hash_table;
+  int64_t   cache_size,read_cnt,write_cnt;
+  struct CDrv  *drvs,*let_to_drv[32];
+  int64_t   mount_ide_auto_cnt,
+        ins_base0,ins_base1;    //Install cd/dvd controller.
+  uint8_t    boot_drv_let,first_hd_drv_let,first_dvd_drv_let;
+  uint8_t  dvd_boot_is_good,ins_unit,pad[3];
+};
+
+struct CTaskStk {
+  struct CTaskStk *next_stk;
+  int64_t   stk_size,stk_ptr;
+  void *    stk_base;
+};
+
+
 int arch_prctl(int code, unsigned long addr) {
 	return syscall(SYS_arch_prctl, code, addr);
 }
@@ -150,7 +215,7 @@ int arch_prctl(int code, unsigned long addr) {
 #define CODE_HEAP_SIZE (10000 * MEM_PAG_SIZE)
 #define TASK_HASH_TABLE_SIZE	(1<<10)
 
-void init_templeos(struct templeos_thread *t) {
+void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Gs = (struct CCPU *)calloc(1, sizeof(struct CCPU));
 	t->Gs->addr = t->Gs;
 	t->Fs = (struct CTask *)calloc(1, sizeof(struct CTask));
@@ -170,6 +235,35 @@ void init_templeos(struct templeos_thread *t) {
 	
 	t->Fs->hash_table = templeos_hash_table_new(TASK_HASH_TABLE_SIZE);
 	
+	t->Fs->cur_dv = templeos_memory_calloc(sizeof(struct CDrv));
+	t->Fs->cur_dv->dv_signature = 0x56535644;
+	t->Fs->cur_dv->fs_type = 1; // we're going to impersonate the RedSea file system (because it's easier)
+	t->Fs->cur_dv->drv_let = DRIVE_LETTER;
+	t->Fs->cur_dv->bd = templeos_memory_calloc(sizeof(struct CBlkDev));
+	t->Fs->cur_dv->bd->bd_signature = 0x56534442;
+	t->Fs->cur_dv->bd->type = 1; // Ram disk
+	
+	// que_init...
+	t->Fs->next_except = (struct CExcept *)(&(t->Fs->next_except));
+	t->Fs->last_except = (struct CExcept *)(&(t->Fs->next_except));
+	
+	t->Fs->stk = templeos_memory_calloc(sizeof(struct CTaskStk));
+	t->Fs->stk->stk_base = stk_base_estimate;
+	t->Fs->stk->stk_size = 4 * 1024 * 1024;
+	
+	struct export_t *blkdev_export = hash_get(&symbols, "blkdev");
+	if (blkdev_export == NULL) {
+		fprintf(stderr, "Could not find global variable blkdev\n");
+		exit(EXIT_FAILURE);
+	}
+	struct CBlkDevGlbls *blkdev = (struct CBlkDevGlbls *)(blkdev_export->val);
+	blkdev->boot_drv_let = DRIVE_LETTER;
+	blkdev->first_hd_drv_let = DRIVE_LETTER;
+	char *p;
+	asprintf(&p, "%c:%s", DRIVE_LETTER, (uint8_t *)getenv("HOME"));
+	blkdev->home_dir = (uint8_t *)p;
+	blkdev->let_to_drv[DRIVE_LETTER - 'A'] = t->Fs->cur_dv;
+	
 	struct sigaction act;
 	
 	act.sa_sigaction = signal_handler;
@@ -183,7 +277,7 @@ void init_templeos(struct templeos_thread *t) {
 	sigaction(SIGABRT, &act, NULL);
 	sigaction(SIGSEGV, &act, NULL);
 }
-	
+
 void enter_templeos(struct templeos_thread *t) {
 	if ((t->Gs == NULL) || (t->Fs == NULL)) {
 		abort();
@@ -369,17 +463,26 @@ struct CHashTable {
 };
 
 struct CHashTable *templeos_hash_table_new(uint64_t size) {
-	struct CHashTable *h = (struct CHashTable *)malloc(sizeof(struct CHashTable));
-	memset(h, 0, sizeof(struct CHashTable));
-	register_templeos_memory(h, sizeof(struct CHashTable));
-	h->body = malloc(size<<3);
-	memset(h->body, 0, size<<3);
-	register_templeos_memory(h->body, size<<3);
+	struct CHashTable *h = (struct CHashTable *)templeos_memory_calloc(sizeof(struct CHashTable));
+	h->body = templeos_memory_calloc(size<<3);
 	h->mask = size-1;
 	return h;
 }
 
-void call_templeos(void *entry, struct templeos_thread *t) {
+void *templeos_memory_calloc(size_t sz) {
+	void *r = malloc(sz);
+	memset(r, 0, sz);
+	register_templeos_memory(r, sz);
+	return r;
+}
+
+void call_templeos(struct templeos_thread *t, char *name) {
+	struct export_t *e = hash_get(&symbols, name);
+	if (e == NULL) {
+		fprintf(stderr, "Could not call %s\n", name);
+		exit(EXIT_FAILURE);
+	}
+	void *entry = (void *)(e->val);
 	fflush(stdout);
 	fflush(stderr);
 	
@@ -388,12 +491,31 @@ void call_templeos(void *entry, struct templeos_thread *t) {
 	exit_templeos(t);
 }
 
+extern void call_templeos3_asm(void *entry, uint64_t arg1, uint64_t arg2, uint64_t arg3);
+
+void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3) {
+	struct export_t *e = hash_get(&symbols, name);
+	if (e == NULL) {
+		fprintf(stderr, "Could not call %s\n", name);
+		exit(EXIT_FAILURE);
+	}
+	void *entry = (void *)(e->val);
+	fflush(stdout);
+	fflush(stderr);
+	
+	enter_templeos(t);
+	call_templeos3_asm(entry, arg1, arg2, arg3);
+	exit_templeos(t);
+}
+
 // trampoline_kernel_patch writes a jump to 'dest' at the entry point of the kernel function named 'name'.
 // the jump in question is an absolute 64bit jump constructed using a PUSH+MOV+RET sequence.
 void trampoline_kernel_patch(char *name, void dest(void)) {
-	uint8_t *x = (uint8_t *)(hash_get(&symbols, "RawPutChar")->val);
+	uint8_t *x = (uint8_t *)(hash_get(&symbols, name)->val);
 	uint64_t d = (uint64_t)dest;
-	printf("patching %p as jump to %lx\n", x, d);
+	if (DEBUG) {
+		printf("patching %p as jump to %lx\n", x, d);
+	}
 	x[0] = 0x68; // PUSH <lower 32 bits>
 	*((uint32_t *)(x+1)) = (uint32_t)d;
 	x[5] = 0xc7; // MOV <higher 32 bits>
@@ -415,4 +537,14 @@ void putchar_c_wrapper(uint64_t c) {
 	exit_templeos(&t);
 	putchar(c);
 	enter_templeos(&t);
+}
+
+struct CDirEntry {
+	//TODO: to be copied
+};
+
+int64_t redseafilefind_c_wrapper(uint64_t dv, int64_t cur_dir_clus, uint8_t *name, struct CDirEntry *_res, int64_t fuf_flags) {
+	//TODO: actually implement redseafilefind
+	// cur_dir_clus = 0 means starting at root directory, otherwise it's a char* to the name of the current directory
+	return 0;
 }

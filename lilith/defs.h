@@ -6,6 +6,7 @@ uint64_t read_uint64(void *mem, off_t off);
 void *malloc_executable_aligned(size_t size, int64_t alignment, int64_t misalignment);
 char *strclone(char *s);
 void writestr(int fd, char *s);
+bool extension_is(char *s, char *ext);
 void signal_handler(int sig, siginfo_t *info, void *ucontext);
 
 // hash.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -62,11 +63,13 @@ struct CBlkPool {
 		*free_pag_hash2[64-MEM_PAG_BITS];
 };
 
-void init_templeos(struct templeos_thread *t);
+void init_templeos(struct templeos_thread *t, void *stk_base_estimate);
 void enter_templeos(struct templeos_thread *t);
 void exit_templeos(struct templeos_thread *t);
-void call_templeos(void *entry, struct templeos_thread *t);
+void call_templeos(struct templeos_thread *t, char *name);
+void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3);
 void register_templeos_memory(void *p, size_t sz);
+void *templeos_memory_calloc(size_t sz);
 bool is_templeos_memory(uint64_t p);
 void blk_pool_init(struct CBlkPool *bp, int64_t pags);
 void blk_pool_add(struct CBlkPool *bp, struct CMemBlk *m, int64_t pags);
@@ -79,5 +82,7 @@ void kernel_patch_var64(char *name, uint64_t val);
 // lilith.s //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern void putchar_asm_wrapper(void);
+extern void drvlock_asm_wrapper(void);
+extern void redseafilefind_asm_wrapper(void);
 
 #endif

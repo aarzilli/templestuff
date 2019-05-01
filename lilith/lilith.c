@@ -17,6 +17,9 @@
 
 #define DEBUG true
 #define DEBUG_LOAD_PASS1 false
+#define IN_GDB false
+
+#define DRIVE_LETTER 'C'
 
 char *temple_root;
 
@@ -46,13 +49,25 @@ int main(int argc, char *argv[]) {
 
 	hash_init(&symbols, 4096);
 	
-	struct templeos_thread t;
-	init_templeos(&t);
-
 	load_kernel(kernel_path);
 	
-	call_templeos((void *)(hash_get(&symbols, "LoadKernel")->val), &t);
-	call_templeos((void *)(hash_get(&symbols, "KeyDevInit")->val), &t);
+	struct templeos_thread t;
+	init_templeos(&t, &argc);
 	
-	//load_bin(argv[1], 0, &t);
+	kernel_patch_var64("adam_task", (uint64_t)(t.Fs));
+	
+	call_templeos(&t, "LoadKernel");
+	call_templeos(&t, "KeyDevInit");
+	
+	if (extension_is(argv[1], ".BIN") || extension_is(argv[1], ".BIN.Z")) {
+		if (IN_GDB) {
+			printf("Load location: %lx\n", hash_get(&symbols, "Load")->val);
+			asm("int3;");
+		}
+		call_templeos3(&t, "Load", (uint64_t)(argv[1]), 0, INT64_MAX);
+	} else if (extension_is(argv[1], ".HC") || extension_is(argv[1], ".HC.Z")) {
+		fprintf(stderr, "Not implemented (HolyC)\n");
+	} else {
+		fprintf(stderr, "Unknown extension %s\n", argv[1]);
+	}
 }

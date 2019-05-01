@@ -18,6 +18,15 @@ char *strclone(char *s) {
 	return r;
 }
 
+bool extension_is(char *s, char *ext) {
+	if (strlen(s) <= strlen(ext)) {
+		return false;
+	}
+	
+	char *p = s + strlen(s) - strlen(ext);
+	return strcmp(p, ext) == 0;
+}
+
 void writestr(int fd, char *s) {
 	char *p = s;
 	int n = strlen(s);
@@ -31,6 +40,8 @@ void writestr(int fd, char *s) {
 	}
 }
 
+#define STACKTRACE_PRINT_ARGS true
+
 void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 	struct templeos_thread t;
 	exit_templeos(&t);
@@ -43,7 +54,6 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 	fprintf(stderr, "Received signal %d at 0x%lx\n", sig, rip);
 	
 	while ((count < 20) && (rbp != 0)) {
-		//TODO: figure out what rip belongs to
 		fprintf(stderr, "\trip=0x%lx rbp=0x%lx\n", rip, rbp);
 		
 		if (!is_templeos_memory(rip)) {
@@ -61,7 +71,16 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 			fprintf(stderr, "\t\tat %s (0x%lx+0x%lx) ghidra=0x%lx\n", e->key, e->val->val, rip - e->val->val, ghidra_off);
 		}
 		
-		rip = *((uint64_t *)(rbp+8));
+		rip = *((uint64_t *)(rbp+0x8));
+		
+		if (STACKTRACE_PRINT_ARGS) {
+			fprintf(stderr, "\t\t\targs");
+			for (int i = 1; i <= 3; i++) {
+				fprintf(stderr, " %lx", *((uint64_t *)(rbp+0x8*(i+1))));
+			}
+			fprintf(stderr, "\n");
+		}
+		
 		rbp = *((uint64_t *)rbp);
 		++count;
 	}
