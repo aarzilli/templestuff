@@ -166,6 +166,19 @@ void init_templeos(struct templeos_thread *t) {
 	
 	t->Fs->data_heap = heap_ctrl_init(data_bp, t->Fs);
 	t->Fs->code_heap = heap_ctrl_init(code_bp, t->Fs);
+	
+	struct sigaction act;
+	
+	act.sa_sigaction = signal_handler;
+	memset(&(act.sa_mask), 0, sizeof(sigset_t));
+	act.sa_flags = SA_SIGINFO;
+	
+	sigaction(SIGILL, &act, NULL);
+	sigaction(SIGABRT, &act, NULL);
+	sigaction(SIGBUS, &act, NULL);
+	sigaction(SIGFPE, &act, NULL);
+	sigaction(SIGABRT, &act, NULL);
+	sigaction(SIGSEGV, &act, NULL);
 }
 	
 void enter_templeos(struct templeos_thread *t) {
@@ -234,7 +247,7 @@ void exit_templeos(struct templeos_thread *t) {
 		error_phase = "get GS base";
 		goto exit_templeos_failed;
 	}
-	if (arch_prctl(ARCH_GET_GS, (uint64_t)&(t->Fs)) == -1) {
+	if (arch_prctl(ARCH_GET_FS, (uint64_t)&(t->Fs)) == -1) {
 		error_phase = "get GS base";
 		goto exit_templeos_failed;
 	}
@@ -344,4 +357,36 @@ struct CHeapCtrl *heap_ctrl_init(struct CBlkPool *bp, struct CTask *task) {
 	hc->last_mergable = NULL;
 	hc->next_um=hc->last_um=(struct CMemUsed *)(((uint8_t *)(&hc->next_um))-offsetof(struct CMemUsed, next));
 	return hc;
+}
+
+void call_templeos(void *entry, struct templeos_thread *t) {
+	fflush(stdout);
+	fflush(stderr);
+	
+	enter_templeos(t);
+	((void (*)(void))entry)();
+	exit_templeos(t);
+}
+
+// trampoline_kernel_patch writes a jump to 'dest' at the entry point of the kernel function named 'name'.
+// the jump in question is an absolute 64bit jump constructed using a PUSH+MOV+RET sequence.
+void trampoline_kernel_patch(char *name, void dest(void)) {
+	uint8_t *x = (uint8_t *)(hash_get(&symbols, "RawPutChar")->val);
+	uint64_t d = (uint64_t)dest;
+	printf("patching %p as jump to %lx\n", x, d);
+	x[0] = 0x68; // PUSH <lower 32 bits>
+	*((uint32_t *)(x+1)) = (uint32_t)d;
+	x[5] = 0xc7; // MOV <higher 32 bits>
+	x[6] = 0x44;
+	x[7] = 0x24;
+	x[8] = 0x04;
+	*((uint32_t *)(x+9)) = (uint32_t)(d>>32);
+	x[13] = 0xc3; // RETx
+}
+
+void putchar_c_wrapper(uint64_t c) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	putchar(c);
+	enter_templeos(&t);
 }

@@ -256,7 +256,7 @@ void load_one_import(uint8_t **psrc, uint8_t *module_base, int64_t ld_flags, boo
 
 off_t cli_patch_table[] = { 0x5a87, 0x550a };
 
-void load_bin(char *path, uint64_t ld_flags) {
+void load_bin(char *path, uint64_t ld_flags, struct templeos_thread *t) {
 	if ((ld_flags&LDF_KERNEL) != 0) {
 		ld_flags |= LDF_JUST_LOAD;
 	}
@@ -328,6 +328,10 @@ void load_bin(char *path, uint64_t ld_flags) {
 	
 	if ((ld_flags & LDF_KERNEL) != 0) {
 		// replaces some CLI and STI with NOPs
+		//TODO: instead of having file offsets here we should do this after the
+		// kernel is loaded and use offsets relative to their containing functions,
+		// so that this is a bit more resilient. Also complain louder if we don't
+		// find what we expect to find.
 		for (int i = 0; i < sizeof(cli_patch_table)/sizeof(off_t); i++) {
 			patch_instruction(mem, cli_patch_table[i], 0xfa, 0x90);
 		}
@@ -353,28 +357,7 @@ void load_bin(char *path, uint64_t ld_flags) {
 	}
 
 	if (((ld_flags&LDF_JUST_LOAD) == 0) && (entry != NULL)) {
-		fflush(stdout);
-		fflush(stderr);
-		struct templeos_thread t;
-		init_templeos(&t); // NO GLIBC PAST THIS POINT (can I even survive
-		
-		struct sigaction act;
-		
-		act.sa_sigaction = signal_handler;
-		memset(&(act.sa_mask), 0, sizeof(sigset_t));
-		act.sa_flags = SA_SIGINFO;
-		
-		sigaction(SIGILL, &act, NULL);
-		sigaction(SIGABRT, &act, NULL);
-		sigaction(SIGBUS, &act, NULL);
-		sigaction(SIGFPE, &act, NULL);
-		sigaction(SIGABRT, &act, NULL);
-		sigaction(SIGSEGV, &act, NULL);
-		
-		enter_templeos(&t);
-		((void (*)(void))entry)();
-		exit_templeos(&t);
-		_exit(0); // mustn't let glibc try to run exit handlers
+		call_templeos(entry, t);
 	}
 }
 

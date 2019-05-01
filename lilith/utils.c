@@ -66,8 +66,6 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 		++count;
 	}
 	
-	//TODO: stacktrace
-	
 	fflush(stderr);
 	_exit(EXIT_FAILURE);
 }
