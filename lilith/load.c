@@ -254,7 +254,7 @@ void load_one_import(uint8_t **psrc, uint8_t *module_base, int64_t ld_flags, boo
 	*psrc = src-1;
 }
 
-off_t cli_patch_table[] = { 0x5a87, 0x550a };
+off_t cli_patch_table[] = { 0x5a87, 0x550a, 0x5c7f };
 
 void load_bin(char *path, uint64_t ld_flags, struct templeos_thread *t) {
 	if ((ld_flags&LDF_KERNEL) != 0) {

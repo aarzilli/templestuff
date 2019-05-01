@@ -382,6 +382,12 @@ void trampoline_kernel_patch(char *name, void dest(void)) {
 	x[8] = 0x04;
 	*((uint32_t *)(x+9)) = (uint32_t)(d>>32);
 	x[13] = 0xc3; // RETx
+	
+	//TODO: switch to 
+	// JMP QWORD PTR [RIP+0]
+	// <bytes of dest>
+	// 0xff 0x25 0x00 0x00 0x00 0x00 (...)
+	// same size but more standard?
 }
 
 void putchar_c_wrapper(uint64_t c) {

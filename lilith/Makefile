@@ -7,5 +7,5 @@ clean:
 # related stuff, hence it must be disabled.
 
 lilith: *.c
-	gcc -g -o lilith -fno-stack-protector -Wall lilith.c lilith.s
+	gcc -g -mno-red-zone -o lilith -fno-stack-protector -Wall lilith.c lilith.s
 
