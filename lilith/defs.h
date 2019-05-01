@@ -43,11 +43,11 @@ struct templeos_thread {
 	struct CTask *Fs;
 };
 
-void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bool *pok, void **pentry_p);
-void load_one_import(uint8_t **patch_table, uint8_t *module_base, int64_t ld_flags, bool *pok);
+void load_pass1(uint8_t *patch_table, uint8_t *module_base);
+void load_one_import(uint8_t **patch_table, uint8_t *module_base, int64_t ld_flags);
 struct export_t *symbols_put(char *key, uint32_t type, uint64_t val, void *module_base);
-void load_bin(char *path, uint64_t ld_flags, struct templeos_thread *t);
-void patch_instruction(void *mem, off_t off, uint8_t original, uint8_t replacement);
+void load_kernel(char *path);
+void kernel_patch_instruction(char *name, off_t off, uint8_t original, uint8_t replacement);
 
 // task.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -70,8 +70,11 @@ void register_templeos_memory(void *p, size_t sz);
 bool is_templeos_memory(uint64_t p);
 void blk_pool_init(struct CBlkPool *bp, int64_t pags);
 void blk_pool_add(struct CBlkPool *bp, struct CMemBlk *m, int64_t pags);
+struct CHashTable *templeos_hash_table_new(uint64_t size);
 struct CHeapCtrl *heap_ctrl_init(struct CBlkPool *bp, struct CTask *task);
 void trampoline_kernel_patch(char *name, void dest(void));
+void kernel_patch_var64(char *name, uint64_t val);
+
 
 // lilith.s //////////////////////////////////////////////////////////////////////////////////////////////////////////
 

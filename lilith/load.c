@@ -37,10 +37,7 @@ struct hash_t symbols;
 
 // LoadPass1 executes some of the relocations specified in the "patch
 // table". Other relocations are executed by LoadPass2.
-void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bool *pok, void **pentry) {
-	if ((ld_flags&LDF_KERNEL) != 0) {
-		ld_flags |= LDF_JUST_LOAD;
-	}
+void load_pass1(uint8_t *patch_table, uint8_t *module_base) {
 	if (DEBUG_LOAD_PASS1) {
 		printf("\n");
 	}
@@ -98,7 +95,7 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bo
 		case IET_REL_I64: // fallthrough
 		case IET_IMM_I64: // fallthrough
 			cur = ((uint8_t *)st_ptr)-5;
-			load_one_import(&cur, module_base, ld_flags, pok);
+			load_one_import(&cur, module_base, 0);
 			break;
 
 		case IET_ABS_ADDR: {
@@ -109,10 +106,8 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bo
 			for (uint32_t j = 0; j < cnt; j++) {
 				uint32_t off = *((uint32_t *)cur);
 				cur += sizeof(uint32_t);
-				if ((ld_flags & LDF_NO_ABSS) == 0) {
-					uint32_t *ptr2 = (uint32_t *)(module_base  + off);
-					*ptr2 += (uint32_t)(uint64_t)module_base;
-				}
+				uint32_t *ptr2 = (uint32_t *)(module_base  + off);
+				*ptr2 += (uint32_t)(uint64_t)module_base;
 			}
 			break;
 		}
@@ -134,10 +129,13 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bo
 				printf("\tcode heap allocation of size %x with %ld relocations (mapped to %p)\n", sz, cnt, ptr3);
 			}
 			for (int64_t j = 0; j < cnt; ++j) {
-				uint32_t off = *((uint32_t *)cur);
+				//uint32_t off = *((uint32_t *)cur);
 				cur += sizeof(uint32_t);
+				// we don't do anything here because we only load the kernel and then call the TempleOS function LoadKernel to finish
+				/*
 				uint32_t *ptr2 = (uint32_t *)(module_base + off);
 				*ptr2 += (uint32_t)(uint64_t)ptr3;
+				*/
 			}
 
 			break;
@@ -159,20 +157,19 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bo
 				printf("\tdata heap allocation of size %lx with %ld relocations (mapped to %p)\n", sz, cnt, ptr3);
 			}
 			for (int64_t j = 0; j < cnt; ++j) {
-				uint32_t off = *((uint32_t *)cur);
+				//uint32_t off = *((uint32_t *)cur);
 				cur += sizeof(uint32_t);
+				// we don't do anything here because we only load the kernel and then call the TempleOS function LoadKernel to finish
+				/*
 				uint64_t *ptr2 = (uint64_t *)(module_base + off);
 				*ptr2 += (uint64_t)ptr3;
+				*/
 			}
 
 			break;
 		}
 
 		case IET_MAIN:
-			*pentry = module_base+i;
-			if (DEBUG_LOAD_PASS1) {
-				printf("\texecutable entry point %p\n", *pentry);
-			}
 			break;
 
 		default:
@@ -183,10 +180,10 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base, int64_t ld_flags, bo
 	}
 }
 
-void load_one_import(uint8_t **psrc, uint8_t *module_base, int64_t ld_flags, bool *pok) {
+void load_one_import(uint8_t **psrc, uint8_t *module_base, int64_t ld_flags) {
 	uint8_t *src = *psrc;
 	bool first = true;
-	struct export_t *tmpex = NULL;
+	//struct export_t *tmpex = NULL;
 
 	for(;;) {
 		uint8_t etype = *src;
@@ -206,20 +203,15 @@ void load_one_import(uint8_t **psrc, uint8_t *module_base, int64_t ld_flags, boo
 			} else {
 				first=false;
 
-				tmpex = hash_get(&symbols, st_ptr);
-				if ((tmpex == NULL) && ((ld_flags&LDF_KERNEL) == 0)) {
-					fprintf(stderr, "Unresolved Reference: %s\n", st_ptr);
-					*pok = false;
-				}
-				
-
-				//TODO: TempleOS can actually deal with some symbols being loaded after the fact, maybe lilith should too?
+				//tmpex = hash_get(&symbols, st_ptr);
 			}
 		}
 		if (DEBUG_LOAD_PASS1) {
 			printf("\tload_one_import at %lx relocation etype=%x i=%lx <%s>\n", (uint8_t *)st_ptr - *psrc - 5, etype, i, st_ptr);
 		}
 
+		// we don't do anything here because we only load the kernel and then call the TempleOS function LoadKernel to finish
+		/*
 		if (tmpex) {
 			void *ptr2=module_base+i;
 			i = tmpex->val;
@@ -250,16 +242,12 @@ void load_one_import(uint8_t **psrc, uint8_t *module_base, int64_t ld_flags, boo
 				break;
 			}
 		}
+		*/
 	}
 	*psrc = src-1;
 }
 
-off_t cli_patch_table[] = { 0x5a87, 0x550a, 0x5c7f };
-
-void load_bin(char *path, uint64_t ld_flags, struct templeos_thread *t) {
-	if ((ld_flags&LDF_KERNEL) != 0) {
-		ld_flags |= LDF_JUST_LOAD;
-	}
+void load_kernel(char *path) {
 	size_t sz;
 	void *mem = load_file(path, &sz);
 
@@ -324,19 +312,7 @@ void load_bin(char *path, uint64_t ld_flags, struct templeos_thread *t) {
 	if (DEBUG) {
 		printf("misalignment %ld (module_align %ld)\n", misalignment, module_align);
 		printf("new location at %p\n", xmem);
-	}
-	
-	if ((ld_flags & LDF_KERNEL) != 0) {
-		// replaces some CLI and STI with NOPs
-		//TODO: instead of having file offsets here we should do this after the
-		// kernel is loaded and use offsets relative to their containing functions,
-		// so that this is a bit more resilient. Also complain louder if we don't
-		// find what we expect to find.
-		for (int i = 0; i < sizeof(cli_patch_table)/sizeof(off_t); i++) {
-			patch_instruction(mem, cli_patch_table[i], 0xfa, 0x90);
-		}
-		
-	}
+	}		
 
 	void *module_base = (void *)((char *)mem + TOSB_HEADER_SIZE);
 
@@ -344,21 +320,21 @@ void load_bin(char *path, uint64_t ld_flags, struct templeos_thread *t) {
 		printf("module_base %p\n", module_base);
 	}
 
-	void *entry = NULL;
-	bool ok = true;
-	load_pass1((uint8_t *)(mem + patch_table_offset), module_base, ld_flags, &ok, &entry);
-	if (DEBUG) {
-		printf("Entry Point %p\n", entry);
-	}
-	if (!ok) {
-		fflush(stdout);
-		fprintf(stderr, "Load failed due to unresolved symbols.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (((ld_flags&LDF_JUST_LOAD) == 0) && (entry != NULL)) {
-		call_templeos(entry, t);
-	}
+	load_pass1((uint8_t *)(mem + patch_table_offset), module_base);
+	
+	// replaces some CLI and STI with NOPs
+	kernel_patch_instruction("_MALLOC", 0x4c, 0xfa, 0x90);
+	kernel_patch_instruction("MemPagAlloc", 0x27, 0xfa, 0x90);
+	kernel_patch_instruction("_FREE", 0x7a, 0xfa, 0x90);
+	kernel_patch_instruction("_HASH_ADD", 0x1c, 0xfa, 0x90);
+	
+	
+	// Patch some kernel functions with our own stuff
+	trampoline_kernel_patch("RawPutChar", &putchar_asm_wrapper);
+	
+	// the kernel needs to know where it's loaded, the 16bit startup code would do this
+	kernel_patch_var64("mem_boot_base", (uint64_t)module_base);
+	kernel_patch_var64("sys_boot_patch_table_base", (uint64_t)(mem + patch_table_offset));
 }
 
 struct export_t *symbols_put(char *key, uint32_t type, uint64_t val, void* module_base) {
@@ -370,8 +346,15 @@ struct export_t *symbols_put(char *key, uint32_t type, uint64_t val, void* modul
 	return ex;
 }
 
-void patch_instruction(void *mem, off_t off, uint8_t original, uint8_t replacement) {
-	if (((uint8_t *)mem)[off] == original) {
-		((uint8_t *)mem)[off] = replacement;
+void kernel_patch_instruction(char *name, off_t off, uint8_t original, uint8_t replacement) {
+	uint8_t *mem = (uint8_t *)(hash_get(&symbols, name)->val + off);
+	if (*mem == original) {
+		*mem = replacement;
+	} else {
+		printf("Error patching instruction at %s+%lx %p\n", name, off, mem);
 	}
+}
+
+void kernel_patch_var64(char *name, uint64_t val) {
+	*((uint64_t *)(hash_get(&symbols, name)->val)) = val;
 }

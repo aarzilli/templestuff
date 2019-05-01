@@ -146,8 +146,9 @@ int arch_prctl(int code, unsigned long addr) {
 	return syscall(SYS_arch_prctl, code, addr);
 }
 
-#define DATA_HEAP_SIZE 10000 * MEM_PAG_SIZE
-#define CODE_HEAP_SIZE 10000 * MEM_PAG_SIZE
+#define DATA_HEAP_SIZE (10000 * MEM_PAG_SIZE)
+#define CODE_HEAP_SIZE (10000 * MEM_PAG_SIZE)
+#define TASK_HASH_TABLE_SIZE	(1<<10)
 
 void init_templeos(struct templeos_thread *t) {
 	t->Gs = (struct CCPU *)calloc(1, sizeof(struct CCPU));
@@ -166,6 +167,8 @@ void init_templeos(struct templeos_thread *t) {
 	
 	t->Fs->data_heap = heap_ctrl_init(data_bp, t->Fs);
 	t->Fs->code_heap = heap_ctrl_init(code_bp, t->Fs);
+	
+	t->Fs->hash_table = templeos_hash_table_new(TASK_HASH_TABLE_SIZE);
 	
 	struct sigaction act;
 	
@@ -357,6 +360,23 @@ struct CHeapCtrl *heap_ctrl_init(struct CBlkPool *bp, struct CTask *task) {
 	hc->last_mergable = NULL;
 	hc->next_um=hc->last_um=(struct CMemUsed *)(((uint8_t *)(&hc->next_um))-offsetof(struct CMemUsed, next));
 	return hc;
+}
+
+struct CHashTable {
+  struct CHashTable *next;
+  int64_t   mask,locked_flags;
+  void *body;
+};
+
+struct CHashTable *templeos_hash_table_new(uint64_t size) {
+	struct CHashTable *h = (struct CHashTable *)malloc(sizeof(struct CHashTable));
+	memset(h, 0, sizeof(struct CHashTable));
+	register_templeos_memory(h, sizeof(struct CHashTable));
+	h->body = malloc(size<<3);
+	memset(h->body, 0, size<<3);
+	register_templeos_memory(h->body, size<<3);
+	h->mask = size-1;
+	return h;
 }
 
 void call_templeos(void *entry, struct templeos_thread *t) {

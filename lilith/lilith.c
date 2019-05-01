@@ -49,9 +49,10 @@ int main(int argc, char *argv[]) {
 	struct templeos_thread t;
 	init_templeos(&t);
 
-	load_bin(kernel_path, LDF_JUST_LOAD|LDF_KERNEL, &t);
-	trampoline_kernel_patch("RawPutChar", &putchar_asm_wrapper);
+	load_kernel(kernel_path);
+	
+	call_templeos((void *)(hash_get(&symbols, "LoadKernel")->val), &t);
 	call_templeos((void *)(hash_get(&symbols, "KeyDevInit")->val), &t);
-	load_bin(argv[1], 0, &t);
-	_exit(0);
+	
+	//load_bin(argv[1], 0, &t);
 }
