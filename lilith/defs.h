@@ -2,12 +2,15 @@
 #define __LILITH_DEFS_H__
 
 // utils.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
+extern struct hash_t paths_table;
+
 uint64_t read_uint64(void *mem, off_t off);
 void *malloc_executable_aligned(size_t size, int64_t alignment, int64_t misalignment);
 char *strclone(char *s);
 void writestr(int fd, char *s);
 bool extension_is(char *s, char *ext);
 void signal_handler(int sig, siginfo_t *info, void *ucontext);
+void print_stack_trace(FILE *out, uint64_t rip, uint64_t rbp);
 
 // hash.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct hash_t {

@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#define _DEFAULT_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -14,9 +15,12 @@
 #include <signal.h>
 #include <ucontext.h>
 #include <stddef.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 #define DEBUG true
 #define DEBUG_LOAD_PASS1 false
+#define DEBUG_FILE_FIND true
 #define IN_GDB false
 
 #define DRIVE_LETTER 'C'
@@ -43,11 +47,12 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "TEMPLEOS environment variable is not set\n");
 		exit(EXIT_FAILURE);
 	}
-
+	
 	char *kernel_path;
 	asprintf(&kernel_path, "%s/0000Boot/0000Kernel.BIN.C", temple_root);
 
 	hash_init(&symbols, 4096);
+	hash_init(&paths_table, 4096);
 	
 	load_kernel(kernel_path);
 	
@@ -61,7 +66,7 @@ int main(int argc, char *argv[]) {
 	
 	if (extension_is(argv[1], ".BIN") || extension_is(argv[1], ".BIN.Z")) {
 		if (IN_GDB) {
-			printf("Load location: %lx\n", hash_get(&symbols, "Load")->val);
+			printf("RedSeaCd location: %lx\n", hash_get(&symbols, "RedSeaCd")->val);
 			asm("int3;");
 		}
 		call_templeos3(&t, "Load", (uint64_t)(argv[1]), 0, INT64_MAX);

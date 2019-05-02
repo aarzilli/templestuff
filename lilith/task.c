@@ -223,10 +223,12 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Fs->gs = t->Gs;
 	t->Fs->task_signature = 0x536b7354; //TskS
 	
+	//TODO: make this thing alinged too
 	struct CBlkPool *data_bp = (struct CBlkPool *)malloc(DATA_HEAP_SIZE * sizeof(uint8_t));
 	register_templeos_memory(data_bp, DATA_HEAP_SIZE * sizeof(uint8_t));
 	struct CBlkPool *code_bp = (struct CBlkPool *)malloc_executable_aligned(CODE_HEAP_SIZE * sizeof(uint8_t), MEM_PAG_SIZE, 0);
 	
+	// Starting from here we should do calls to actual templeos functions
 	blk_pool_init(data_bp, DATA_HEAP_SIZE / MEM_PAG_SIZE);
 	blk_pool_init(code_bp, CODE_HEAP_SIZE / MEM_PAG_SIZE);
 	
@@ -259,9 +261,12 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	struct CBlkDevGlbls *blkdev = (struct CBlkDevGlbls *)(blkdev_export->val);
 	blkdev->boot_drv_let = DRIVE_LETTER;
 	blkdev->first_hd_drv_let = DRIVE_LETTER;
-	char *p;
+	/*char *p;
 	asprintf(&p, "%c:%s", DRIVE_LETTER, (uint8_t *)getenv("HOME"));
 	blkdev->home_dir = (uint8_t *)p;
+	if (DEBUG_FILE_FIND) {
+		printf("root directory is %s at %p\n", p, p);
+	}*/
 	blkdev->let_to_drv[DRIVE_LETTER - 'A'] = t->Fs->cur_dv;
 	
 	struct sigaction act;
@@ -539,12 +544,99 @@ void putchar_c_wrapper(uint64_t c) {
 	enter_templeos(&t);
 }
 
+#define CDIR_FILENAME_LEN       38
+
 struct CDirEntry {
-	//TODO: to be copied
+  struct CDirEntry *next,*parent,*sub;
+  uint8_t    *full_name;
+  int64_t   user_data,user_data2;
+
+  uint16_t   attr;
+  uint8_t    name[CDIR_FILENAME_LEN];
+  int64_t   clus,size;
+  int64_t datetime;
 };
 
+#define FUF_JUST_DIRS           0x0000400 //D
+#define FUF_JUST_FILES          0x0000800 //F
+
+#define RS_ATTR_DIR 0x10
+#define RS_ATTR_COMPRESSED 0x400
+
 int64_t redseafilefind_c_wrapper(uint64_t dv, int64_t cur_dir_clus, uint8_t *name, struct CDirEntry *_res, int64_t fuf_flags) {
-	//TODO: actually implement redseafilefind
-	// cur_dir_clus = 0 means starting at root directory, otherwise it's a char* to the name of the current directory
-	return 0;
+	int64_t res = 0;
+	struct templeos_thread t;
+	exit_templeos(&t);
+		
+	char *dpath = "/";
+	if (cur_dir_clus != 0) {
+		dpath = (char *)cur_dir_clus;
+	}
+	
+	if (DEBUG_FILE_FIND) {
+		printf("RedSeaFileFind([%s] %016lx, [%s], fuf_flags=%lx)\n", dpath, cur_dir_clus, name, fuf_flags);
+	}
+	
+	print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
+	
+	DIR *d = opendir(dpath);
+	struct dirent *ent = NULL;
+	
+	for(;;) {
+		ent = readdir(d);
+		if (ent == NULL) {
+			break;
+		}
+		if ((fuf_flags & FUF_JUST_DIRS) != 0) {
+			if (ent->d_type != DT_DIR) {
+				continue;
+			}
+		}
+		if ((fuf_flags & FUF_JUST_FILES) != 0) {
+			if (ent->d_type == DT_DIR) {
+				continue;
+			}
+		}
+		if (strcmp(ent->d_name, (char *)name) == 0) {
+			res = 1;
+			break;
+		}
+	}
+	
+	if ((ent != NULL) && (_res != NULL)) {
+		struct stat statbuf;
+		char *p = malloc(strlen(dpath) + strlen(ent->d_name) + 2);
+		strcpy(p, dpath);
+		strcat(p, "/");
+		strcat(p, ent->d_name);
+		memset(&statbuf, 0, sizeof(struct stat));
+		stat(p, &statbuf);
+		
+		if (ent->d_type == DT_DIR) {
+			_res->attr |= RS_ATTR_DIR;
+		}
+		if (extension_is(ent->d_name, ".Z")) {
+			_res->attr |= RS_ATTR_COMPRESSED;
+		}
+		strcpy((char *)(_res->name), ent->d_name);
+		_res->size = statbuf.st_size;
+		
+		_res->clus = intern_path(p);
+		_res->datetime = 0; // TODO: actually fill with the proper stuff
+		
+		if (DEBUG_FILE_FIND) {
+			printf("\tfound %lx\n", _res->clus);
+		}
+		
+		free(p);
+	} else if (DEBUG_FILE_FIND) {
+		printf("\tnot found\n");
+	}
+	
+	printf("cur dir: %s %p\n", t.Fs->cur_dir, t.Fs->cur_dir);
+
+	closedir(d);
+	
+	enter_templeos(&t);
+	return res;
 }

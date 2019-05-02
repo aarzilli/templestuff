@@ -49,12 +49,19 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 	
 	uint64_t rip = ucontext->uc_mcontext.gregs[REG_RIP];
 	uint64_t rbp = ucontext->uc_mcontext.gregs[REG_RBP];
-	int count = 0;
 	
 	fprintf(stderr, "Received signal %d at 0x%lx\n", sig, rip);
+	print_stack_trace(stderr, rip, rbp);
+	
+	fflush(stderr);
+	_exit(EXIT_FAILURE);
+}
+
+void print_stack_trace(FILE *out, uint64_t rip, uint64_t rbp) {
+	int count = 0;
 	
 	while ((count < 20) && (rbp != 0)) {
-		fprintf(stderr, "\trip=0x%lx rbp=0x%lx\n", rip, rbp);
+		fprintf(out, "\trip=0x%lx rbp=0x%lx\n", rip, rbp);
 		
 		if (!is_templeos_memory(rip)) {
 			break;
@@ -68,23 +75,35 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 				ghidra_off = rip - e->val->module_base + 0x10000020;
 			}
 			
-			fprintf(stderr, "\t\tat %s (0x%lx+0x%lx) ghidra=0x%lx\n", e->key, e->val->val, rip - e->val->val, ghidra_off);
+			fprintf(out, "\t\tat %s (0x%lx+0x%lx) ghidra=0x%lx\n", e->key, e->val->val, rip - e->val->val, ghidra_off);
 		}
 		
 		rip = *((uint64_t *)(rbp+0x8));
 		
 		if (STACKTRACE_PRINT_ARGS) {
-			fprintf(stderr, "\t\t\targs");
+			fprintf(out, "\t\t\targs");
 			for (int i = 1; i <= 3; i++) {
-				fprintf(stderr, " %lx", *((uint64_t *)(rbp+0x8*(i+1))));
+				fprintf(out, " %lx", *((uint64_t *)(rbp+0x8*(i+1))));
 			}
-			fprintf(stderr, "\n");
+			fprintf(out, "\n");
 		}
 		
 		rbp = *((uint64_t *)rbp);
 		++count;
 	}
-	
-	fflush(stderr);
-	_exit(EXIT_FAILURE);
+}
+
+struct hash_t paths_table;
+
+uint64_t intern_path(char *p) {
+	struct export_t *e = hash_get(&paths_table, p);
+	if (e != NULL) {
+		return e->val;
+	}
+	e = (struct export_t *)malloc(sizeof(struct export_t));
+	char *k = strclone(p);
+	e->type = 0;
+	e->val = (uint64_t)(k);
+	hash_put(&paths_table, k, e);
+	return e->val;
 }

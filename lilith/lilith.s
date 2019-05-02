@@ -15,6 +15,10 @@
 	pushq %r13
 	pushq %r14
 	pushq %r15
+	movq 0x8(%rbp), %rax
+	movq %rax, %fs:0x118
+	movq 0x0(%rbp), %rax
+	movq %rax, %fs:0x158
 	.endm
 	
 	.macro push_registers_except_rax
@@ -33,6 +37,10 @@
 	pushq %r13
 	pushq %r14
 	pushq %r15
+	movq 0x8(%rbp), %rax
+	movq %rax, %fs:0x118
+	movq 0x0(%rbp), %rax
+	movq %rax, %fs:0x158
 	.endm
 	
 	.macro pop_registers
@@ -78,7 +86,7 @@ putchar_asm_wrapper:
 	movq  0x10(%rbp), %rdi
 	call putchar_c_wrapper
 	pop_registers
-	ret
+	ret $0x8
 
 	.text
 	.globl call_templeos3_asm
@@ -96,8 +104,9 @@ call_templeos3_asm:
 	.globl drvlock_asm_wrapper
 	.type drvlock_asm_wrapper, @function
 drvlock_asm_wrapper:
-	// don't do anythin
-	ret
+	// don't do anything
+	movq $0, %rax
+	ret $0x8
 
 	.text
 	.globl redseafilefind_asm_wrapper
@@ -112,4 +121,4 @@ redseafilefind_asm_wrapper:
 	movq 0x30(%rbp), %r8
 	call redseafilefind_c_wrapper
 	pop_registers_except_rax
-	ret
+	ret $0x20
