@@ -80,12 +80,14 @@ struct CHashTable *templeos_hash_table_new(uint64_t size);
 struct CHeapCtrl *heap_ctrl_init(struct CBlkPool *bp, struct CTask *task);
 void trampoline_kernel_patch(char *name, void dest(void));
 void kernel_patch_var64(char *name, uint64_t val);
-
+void print_hash_table(FILE *out, struct CTask *task);
 
 // lilith.s //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern void putchar_asm_wrapper(void);
 extern void drvlock_asm_wrapper(void);
 extern void redseafilefind_asm_wrapper(void);
+extern void templeos_malloc_asm_wrapper(void);
+extern void templeos_free_asm_wrapper(void);
 
 #endif

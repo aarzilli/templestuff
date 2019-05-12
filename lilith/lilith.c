@@ -61,12 +61,16 @@ int main(int argc, char *argv[]) {
 	
 	kernel_patch_var64("adam_task", (uint64_t)(t.Fs));
 	
+	t.Fs->hash_table = (struct CHashTable *)call_templeos2(&t, "HashTableNew", TASK_HASH_TABLE_SIZE, 0);
+	printf("adam's hash table %p %lx %lx\n", t.Fs->hash_table, offsetof(struct CTask, hash_table), t.Fs->hash_table->mask);
 	call_templeos(&t, "LoadKernel");
 	call_templeos(&t, "KeyDevInit");
 	
+	printf("Initialization Done\n");
+	
 	if (extension_is(argv[1], ".BIN") || extension_is(argv[1], ".BIN.Z")) {
 		if (IN_GDB) {
-			printf("RedSeaCd location: %lx\n", hash_get(&symbols, "RedSeaCd")->val);
+			printf("_HASH_FIND location: %lx\n", hash_get(&symbols, "_HASH_FIND")->val);
 			asm("int3;");
 		}
 		call_templeos3(&t, "Load", (uint64_t)(argv[1]), 0, INT64_MAX);

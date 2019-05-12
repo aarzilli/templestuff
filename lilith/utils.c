@@ -53,6 +53,27 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 	fprintf(stderr, "Received signal %d at 0x%lx\n", sig, rip);
 	print_stack_trace(stderr, rip, rbp);
 	
+	fprintf(stderr, "\nRegisters:\n");
+	
+	fprintf(stderr, "\tRAX %016llx\n", ucontext->uc_mcontext.gregs[REG_RAX]);
+	fprintf(stderr, "\tRBX %016llx\n", ucontext->uc_mcontext.gregs[REG_RBX]);
+	fprintf(stderr, "\tRCX %016llx\n", ucontext->uc_mcontext.gregs[REG_RCX]);
+	fprintf(stderr, "\tRDX %016llx\n", ucontext->uc_mcontext.gregs[REG_RDX]);
+	fprintf(stderr, "\tRSI %016llx\n", ucontext->uc_mcontext.gregs[REG_RSI]);
+	fprintf(stderr, "\tRDI %016llx\n", ucontext->uc_mcontext.gregs[REG_RDI]);
+	fprintf(stderr, "\tR8  %016llx\n", ucontext->uc_mcontext.gregs[REG_R8]);
+	fprintf(stderr, "\tR9  %016llx\n", ucontext->uc_mcontext.gregs[REG_R9]);
+	fprintf(stderr, "\tR10 %016llx\n", ucontext->uc_mcontext.gregs[REG_R10]);
+	fprintf(stderr, "\tR11 %016llx\n", ucontext->uc_mcontext.gregs[REG_R11]);
+	fprintf(stderr, "\tR12 %016llx\n", ucontext->uc_mcontext.gregs[REG_R12]);
+	fprintf(stderr, "\tR13 %016llx\n", ucontext->uc_mcontext.gregs[REG_R13]);
+	fprintf(stderr, "\tR14 %016llx\n", ucontext->uc_mcontext.gregs[REG_R14]);
+	fprintf(stderr, "\tR15 %016llx\n", ucontext->uc_mcontext.gregs[REG_R15]);
+	
+	fprintf(stderr, "\nPrint system hash table:\n");
+	
+	print_hash_table(stderr, t.Fs);
+	
 	fflush(stderr);
 	_exit(EXIT_FAILURE);
 }
@@ -90,6 +111,27 @@ void print_stack_trace(FILE *out, uint64_t rip, uint64_t rbp) {
 		
 		rbp = *((uint64_t *)rbp);
 		++count;
+	}
+}
+
+void print_stack_trace_here(void) {
+	uint64_t rbp;
+	asm("movq %%rbp, %0" : "=r"(rbp));
+	
+	uint64_t rip = *((uint64_t *)(rbp+0x8));
+	
+	struct templeos_thread t;
+	bool itm = false;
+	
+	if (is_templeos_memory(rip)) {
+		itm = true;
+		exit_templeos(&t);
+	}
+	
+	print_stack_trace(stderr, rip, rbp);
+	
+	if (itm) {
+		enter_templeos(&t);
 	}
 }
 

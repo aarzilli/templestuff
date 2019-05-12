@@ -68,7 +68,7 @@ struct CTask { //The Fs segment reg points to current CTask.
 	int64_t   wake_jiffy;
 	uint32_t   task_flags,display_flags;
 	
-	struct CHeapCtrl *code_heap,*data_heap;
+	uint64_t code_heap, data_heap;
 	
 	struct CDoc  *put_doc,*display_doc, //When double buffering, these two differ.
 	      *border_doc;
@@ -211,8 +211,6 @@ int arch_prctl(int code, unsigned long addr) {
 	return syscall(SYS_arch_prctl, code, addr);
 }
 
-#define DATA_HEAP_SIZE (10000 * MEM_PAG_SIZE)
-#define CODE_HEAP_SIZE (10000 * MEM_PAG_SIZE)
 #define TASK_HASH_TABLE_SIZE	(1<<10)
 
 void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
@@ -223,19 +221,8 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Fs->gs = t->Gs;
 	t->Fs->task_signature = 0x536b7354; //TskS
 	
-	//TODO: make this thing alinged too
-	struct CBlkPool *data_bp = (struct CBlkPool *)malloc(DATA_HEAP_SIZE * sizeof(uint8_t));
-	register_templeos_memory(data_bp, DATA_HEAP_SIZE * sizeof(uint8_t));
-	struct CBlkPool *code_bp = (struct CBlkPool *)malloc_executable_aligned(CODE_HEAP_SIZE * sizeof(uint8_t), MEM_PAG_SIZE, 0);
-	
-	// Starting from here we should do calls to actual templeos functions
-	blk_pool_init(data_bp, DATA_HEAP_SIZE / MEM_PAG_SIZE);
-	blk_pool_init(code_bp, CODE_HEAP_SIZE / MEM_PAG_SIZE);
-	
-	t->Fs->data_heap = heap_ctrl_init(data_bp, t->Fs);
-	t->Fs->code_heap = heap_ctrl_init(code_bp, t->Fs);
-	
-	t->Fs->hash_table = templeos_hash_table_new(TASK_HASH_TABLE_SIZE);
+	t->Fs->data_heap = 0x1;
+	t->Fs->code_heap = 0x2;
 	
 	t->Fs->cur_dv = templeos_memory_calloc(sizeof(struct CDrv));
 	t->Fs->cur_dv->dv_signature = 0x56535644;
@@ -394,7 +381,8 @@ void register_templeos_memory(void *p, size_t sz) {
 	}
 	
 	if (templeos_mem_map.len == templeos_mem_map.cap) {
-		templeos_mem_map.v = realloc(templeos_mem_map.v, sizeof(struct templeos_mem_entry_t) * templeos_mem_map.cap * 2);
+		templeos_mem_map.cap *= 2;
+		templeos_mem_map.v = realloc(templeos_mem_map.v, sizeof(struct templeos_mem_entry_t) * templeos_mem_map.cap);
 	}
 	templeos_mem_map.v[templeos_mem_map.len].mem = p;
 	templeos_mem_map.v[templeos_mem_map.len].sz = sz;
@@ -444,35 +432,19 @@ struct CMemUsed {
 	int64_t   size;
 };
 
-#define HEAP_CTRL_SIGNATURE_VAL 0x56536348
-
-struct CHeapCtrl *heap_ctrl_init(struct CBlkPool *bp, struct CTask *task) {
-	struct CHeapCtrl *hc = (struct CHeapCtrl *)calloc(1, sizeof(struct CHeapCtrl));
-	hc->hc_signature = HEAP_CTRL_SIGNATURE_VAL; // mov [param2+0x8], blah
-	hc->mem_task = task; // mov [param2+0x28], task
-	hc->bp = bp; // mov [param2] = bp
-	
-	// que_init...
-	hc->next_mem_blk = (struct CMemBlk *)(&hc->next_mem_blk);
-	hc->last_mem_blk = (struct CMemBlk *)(&hc->next_mem_blk);
-	
-	hc->last_mergable = NULL;
-	hc->next_um=hc->last_um=(struct CMemUsed *)(((uint8_t *)(&hc->next_um))-offsetof(struct CMemUsed, next));
-	return hc;
-}
-
 struct CHashTable {
   struct CHashTable *next;
   int64_t   mask,locked_flags;
-  void *body;
+  struct CHash **body;
 };
 
-struct CHashTable *templeos_hash_table_new(uint64_t size) {
-	struct CHashTable *h = (struct CHashTable *)templeos_memory_calloc(sizeof(struct CHashTable));
-	h->body = templeos_memory_calloc(size<<3);
-	h->mask = size-1;
-	return h;
-}
+struct CHash {
+  struct CHash	*next;
+  uint8_t	*str;
+  uint32_t	type,
+	use_cnt; 
+};
+
 
 void *templeos_memory_calloc(size_t sz) {
 	void *r = malloc(sz);
@@ -511,6 +483,24 @@ void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64
 	enter_templeos(t);
 	call_templeos3_asm(entry, arg1, arg2, arg3);
 	exit_templeos(t);
+}
+
+extern uint64_t call_templeos2_asm(void *entry, uint64_t arg1, uint64_t arg2);
+
+uint64_t call_templeos2(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2) {
+	struct export_t *e = hash_get(&symbols, name);
+	if (e == NULL) {
+		fprintf(stderr, "Could not call %s\n", name);
+		exit(EXIT_FAILURE);
+	}
+	void *entry = (void *)(e->val);
+	fflush(stdout);
+	fflush(stderr);
+	
+	enter_templeos(t);
+	uint64_t r = call_templeos2_asm(entry, arg1, arg2);
+	exit_templeos(t);
+	return r;
 }
 
 // trampoline_kernel_patch writes a jump to 'dest' at the entry point of the kernel function named 'name'.
@@ -639,4 +629,79 @@ int64_t redseafilefind_c_wrapper(uint64_t dv, int64_t cur_dir_clus, uint8_t *nam
 	
 	enter_templeos(&t);
 	return res;
+}
+
+void *templeos_malloc_c_wrapper(uint64_t size, uint64_t mem_task) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	
+	void *p;
+	switch (mem_task) {
+	case 0x02:
+		p = mmap(NULL, size, PROT_EXEC|PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_32BIT, -1, 0);
+	default:
+		p = malloc(size);
+	}
+	
+	//printf("Allocated %p to %p (%lx)\n", p, p+size, size);
+	register_templeos_memory(p, size);
+	enter_templeos(&t);
+	return p;
+}
+
+void templeos_free_c_wrapper(void *p) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	
+	free(p);
+	
+	enter_templeos(&t);
+}
+
+#define PRINT_HASH_TABLE_EARLY_EXIT true
+
+void print_hash_table(FILE *out, struct CTask *task) {
+	struct CHashTable *h = task->hash_table;
+	
+	while (h != NULL) {
+		fprintf(out, "hashtable at %p\n", h);
+		fprintf(out, "\tnext %p\n", h->next);
+		fprintf(out, "\tmask %lx (size: %lx)\n", h->mask, h->mask+1);
+		fprintf(out, "\tlocked_flags %lx\n", h->locked_flags);
+		fprintf(out, "\tbody %p\n", h->body);
+		
+		for (int i = 0; i < h->mask+1; ++i) {
+			struct CHash *he = h->body[i];
+			if (he == NULL) {
+				continue;
+			}
+			fprintf(out, "\t[%x] element at %p\n", i, he);
+			
+			bool early_exit = false;
+			
+			while (he != NULL) {
+				fprintf(out, "\t\tnext %p\n", he->next);
+				if (is_templeos_memory((uint64_t)(he->str))) {
+					fprintf(out, "\t\tstr %p [%s]\n", he->str, he->str);
+				} else {
+					fprintf(out, "\t\tstr %p\n", he->str);
+					early_exit = PRINT_HASH_TABLE_EARLY_EXIT;
+				}
+				fprintf(out, "\t\ttype %x\n", he->type);
+				fprintf(out, "\t\tuse_cnt %d\n", he->use_cnt);
+				fprintf(out, "\n");
+				he = he->next;
+				if ((he != NULL) && !is_templeos_memory((uint64_t)he)) {
+					fprintf(out, "\t\t(out of templeos memory)\n\n");
+					break;
+				}
+			}
+			
+			if (early_exit) {
+				return;
+			}
+		}
+		
+		h = h->next;
+	}
 }

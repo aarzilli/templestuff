@@ -101,6 +101,17 @@ call_templeos3_asm:
 	ret
 
 	.text
+	.globl call_templeos2_asm
+	.type call_templeos2_asm, @function
+call_templeos2_asm:
+	push_registers_except_rax
+	push %rdx
+	push %rsi
+	call *%rdi
+	pop_registers_except_rax
+	ret
+
+	.text
 	.globl drvlock_asm_wrapper
 	.type drvlock_asm_wrapper, @function
 drvlock_asm_wrapper:
@@ -122,3 +133,24 @@ redseafilefind_asm_wrapper:
 	call redseafilefind_c_wrapper
 	pop_registers_except_rax
 	ret $0x20
+
+	.text
+	.globl templeos_malloc_asm_wrapper
+	.type templeos_malloc_asm_wrapper, @function
+templeos_malloc_asm_wrapper:
+	push_registers_except_rax
+	movq 0x10(%rbp), %rdi
+	movq 0x18(%rbp), %rsi
+	call templeos_malloc_c_wrapper
+	pop_registers_except_rax
+	ret $0x10
+	
+	.text
+	.globl templeos_free_asm_wrapper
+	.type templeos_free_asm_wrapper, @function
+templeos_free_asm_wrapper:
+	push_registers
+	movq 0x10(%rbp), %rdi
+	call templeos_free_c_wrapper
+	pop_registers
+	ret $0x8
