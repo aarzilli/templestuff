@@ -18,10 +18,11 @@
 #include <sys/types.h>
 #include <dirent.h>
 
-#define DEBUG true
+#define DEBUG false
 #define DEBUG_LOAD_PASS1 false
-#define DEBUG_FILE_FIND false
+#define DEBUG_FILE_SYSTEM false
 #define DEBUG_ALLOC false
+#define DEBUG_PRINT_TEMPLEOS_SYMBOL_TABLE_ON_SIGNAL false
 #define IN_GDB false
 
 #define DRIVE_LETTER 'C'
@@ -63,11 +64,15 @@ int main(int argc, char *argv[]) {
 	kernel_patch_var64("adam_task", (uint64_t)(t.Fs));
 	
 	t.Fs->hash_table = (struct CHashTable *)call_templeos2(&t, "HashTableNew", TASK_HASH_TABLE_SIZE, 0);
-	printf("adam's hash table %p %lx %lx\n", t.Fs->hash_table, offsetof(struct CTask, hash_table), t.Fs->hash_table->mask);
+	if (DEBUG) {
+		printf("adam's hash table %p %lx %lx\n", t.Fs->hash_table, offsetof(struct CTask, hash_table), t.Fs->hash_table->mask);
+	}
 	call_templeos(&t, "LoadKernel");
 	call_templeos(&t, "KeyDevInit");
 	
-	printf("Initialization Done\n");
+	if (DEBUG) {
+		printf("Initialization Done\n");
+	}
 	
 	if (extension_is(argv[1], ".BIN") || extension_is(argv[1], ".BIN.Z")) {
 		if (IN_GDB) {

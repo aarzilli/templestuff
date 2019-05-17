@@ -334,6 +334,7 @@ void load_kernel(char *path) {
 	trampoline_kernel_patch("RawPutChar", &putchar_asm_wrapper);
 	trampoline_kernel_patch("DrvLock", &drvlock_asm_wrapper);
 	trampoline_kernel_patch("RedSeaFileFind", &redseafilefind_asm_wrapper);
+	trampoline_kernel_patch("RedSeaFileRead", &redseafileread_asm_wrapper);
 	
 	// the kernel needs to know where it's loaded, the 16bit startup code would do this
 	kernel_patch_var64("mem_boot_base", (uint64_t)module_base);

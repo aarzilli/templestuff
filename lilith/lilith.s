@@ -120,21 +120,6 @@ drvlock_asm_wrapper:
 	ret $0x8
 
 	.text
-	.globl redseafilefind_asm_wrapper
-	.type redseafilefind_asm_wrapper, @function
-redseafilefind_asm_wrapper:
-	push_registers_except_rax
-	
-	movq 0x10(%rbp), %rdi
-	movq 0x18(%rbp), %rsi
-	movq 0x20(%rbp), %rdx
-	movq 0x28(%rbp), %rcx
-	movq 0x30(%rbp), %r8
-	call redseafilefind_c_wrapper
-	pop_registers_except_rax
-	ret $0x28
-
-	.text
 	.globl templeos_malloc_asm_wrapper
 	.type templeos_malloc_asm_wrapper, @function
 templeos_malloc_asm_wrapper:
@@ -154,3 +139,32 @@ templeos_free_asm_wrapper:
 	call templeos_free_c_wrapper
 	pop_registers
 	ret $0x8
+
+	.text
+	.globl redseafilefind_asm_wrapper
+	.type redseafilefind_asm_wrapper, @function
+redseafilefind_asm_wrapper:
+	push_registers_except_rax
+	movq 0x10(%rbp), %rdi
+	movq 0x18(%rbp), %rsi
+	movq 0x20(%rbp), %rdx
+	movq 0x28(%rbp), %rcx
+	movq 0x30(%rbp), %r8
+	call redseafilefind_c_wrapper
+	pop_registers_except_rax
+	ret $0x28
+
+	.text
+	.globl redseafileread_asm_wrapper
+	.type redseafileread_asm_wrapper, @function
+redseafileread_asm_wrapper:
+	push_registers_except_rax
+	movq 0x10(%rbp), %rdi
+	movq 0x18(%rbp), %rsi
+	movq 0x20(%rbp), %rdx
+	movq 0x28(%rbp), %rcx
+	movq 0x30(%rbp), %r8
+	call redseafileread_c_wrapper
+	pop_registers_except_rax
+	ret $0x28
+	

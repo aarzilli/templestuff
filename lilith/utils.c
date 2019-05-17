@@ -70,9 +70,10 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 	fprintf(stderr, "\tR14 %016llx\n", ucontext->uc_mcontext.gregs[REG_R14]);
 	fprintf(stderr, "\tR15 %016llx\n", ucontext->uc_mcontext.gregs[REG_R15]);
 	
-	fprintf(stderr, "\nPrint system hash table:\n");
-	
-	print_hash_table(stderr, t.Fs);
+	if (DEBUG_PRINT_TEMPLEOS_SYMBOL_TABLE_ON_SIGNAL) {
+		fprintf(stderr, "\nPrint system hash table:\n");
+		print_hash_table(stderr, t.Fs);
+	}
 	
 	fflush(stderr);
 	_exit(EXIT_FAILURE);
@@ -148,4 +149,14 @@ uint64_t intern_path(char *p) {
 	e->val = (uint64_t)(k);
 	hash_put(&paths_table, k, e);
 	return e->val;
+}
+
+char *fileconcat(char *p1, char *p2) {
+	char *p = malloc(strlen(p1) + strlen(p2) + 2);
+	strcpy(p, p1);
+	if ((strlen(p) == 0) || (p[strlen(p)-1] != '/')) {
+		strcat(p, "/");
+	}
+	strcat(p, p2);
+	return p;
 }

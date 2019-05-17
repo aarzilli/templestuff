@@ -579,9 +579,9 @@ int64_t redseafilefind_c_wrapper(uint64_t dv, int64_t cur_dir_clus, uint8_t *nam
 		dpath = (char *)cur_dir_clus;
 	}
 	
-	if (DEBUG_FILE_FIND) {
+	if (DEBUG_FILE_SYSTEM) {
 		printf("RedSeaFileFind([%s] %016lx, [%s], fuf_flags=%lx)\n", dpath, cur_dir_clus, name, fuf_flags);
-		print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
+		//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
 	}
 	
 	DIR *d = opendir(dpath);
@@ -610,10 +610,7 @@ int64_t redseafilefind_c_wrapper(uint64_t dv, int64_t cur_dir_clus, uint8_t *nam
 	
 	if ((ent != NULL) && (_res != NULL)) {
 		struct stat statbuf;
-		char *p = malloc(strlen(dpath) + strlen(ent->d_name) + 2);
-		strcpy(p, dpath);
-		strcat(p, "/");
-		strcat(p, ent->d_name);
+		char *p = fileconcat(dpath, ent->d_name);
 		memset(&statbuf, 0, sizeof(struct stat));
 		stat(p, &statbuf);
 		
@@ -629,16 +626,16 @@ int64_t redseafilefind_c_wrapper(uint64_t dv, int64_t cur_dir_clus, uint8_t *nam
 		_res->clus = intern_path(p);
 		_res->datetime = 0; // TODO: actually fill with the proper stuff
 		
-		if (DEBUG_FILE_FIND) {
+		if (DEBUG_FILE_SYSTEM) {
 			printf("\tfound %lx\n", _res->clus);
 		}
 		
 		free(p);
-	} else if (DEBUG_FILE_FIND) {
+	} else if (DEBUG_FILE_SYSTEM) {
 		printf("\tnot found\n");
 	}
 	
-	if (DEBUG_FILE_FIND) {
+	if (DEBUG_FILE_SYSTEM) {
 		printf("cur dir: %s %p\n", t.Fs->cur_dir, t.Fs->cur_dir);
 	}
 
@@ -648,36 +645,108 @@ int64_t redseafilefind_c_wrapper(uint64_t dv, int64_t cur_dir_clus, uint8_t *nam
 	return res;
 }
 
+char *redseafileread_c_wrapper(uint64_t cdrv, char *cur_dir, char *filename, int64_t *psize, int64_t *pattr) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	
+	if (DEBUG_FILE_SYSTEM) {
+		printf("RedSeaFileRead([%s], [%s], %p, %p)\n", cur_dir, filename, psize, pattr);
+		//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
+	}
+	
+	char *p = fileconcat(cur_dir, filename);
+	char *buf = NULL;
+	
+	struct stat statbuf;
+	memset(&statbuf, 0, sizeof(struct stat));
+	if (stat(p, &statbuf) == 0) {
+		if (pattr != NULL) {
+			*pattr = 0;
+			if (extension_is(filename, ".Z")) {
+				*pattr |= RS_ATTR_COMPRESSED;
+			}
+			if ((statbuf.st_mode & S_IFMT) == S_IFDIR) {
+				*pattr |= RS_ATTR_DIR;
+			}
+		}
+		
+		if (psize != NULL) {
+			*psize = statbuf.st_size;
+		}
+		
+		int fd = open(p, O_RDONLY);
+		if (fd >= 0) {
+			buf = (char *)malloc_for_templeos(statbuf.st_size, false);
+			char *rdbuf = buf;
+			int toread = statbuf.st_size;
+			
+			while(toread > 0) {
+				int n = read(fd, rdbuf, toread);
+				if (n == 0) {
+					break;
+				}
+				if (n < 0) {
+					if (errno == EAGAIN) {
+						continue;
+					}
+					fprintf(stderr, "error while reading %s: %s\n", p, strerror(errno));
+					free_for_templeos(buf);
+					buf = NULL;
+					break;
+				}
+				
+				rdbuf += n;
+				toread -= n;
+			}
+			
+			close(fd);
+		} else {
+			fprintf(stderr, "could not open %s: %s\n", p, strerror(errno));
+		}
+	}
+	
+	free(p);
+	
+	enter_templeos(&t);
+	return buf;
+}
+
+// malloc_for_templeos returns a chunk of memory of the specified size
+// allocated for TempleOS (TempleOS will be able to call Free on it).
+void *malloc_for_templeos(uint64_t size, bool executable) {
+	void *p;
+	bool is_mmapped = false;
+	if (executable) {
+		p = mmap(NULL, size, PROT_EXEC|PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_32BIT, -1, 0);
+		is_mmapped = true;
+	} else {
+		p = malloc(size);
+	}
+	register_templeos_memory(p, size, is_mmapped);
+	return p;
+}
+
 void *templeos_malloc_c_wrapper(uint64_t size, uint64_t mem_task) {
 	struct templeos_thread t;
 	exit_templeos(&t);
 	
-	void *p;
-	bool is_mmapped = false;
-	switch (mem_task) {
-	case 0x02:
-		p = mmap(NULL, size, PROT_EXEC|PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_32BIT, -1, 0);
-		is_mmapped = true;
-	default:
-		p = malloc(size);
-	}
+	void *p = malloc_for_templeos(size, mem_task == 0x02);
+	
 	
 	if (DEBUG_ALLOC) {
 		printf("Allocated %p to %p (%lx)\n", p, p+size, size);
 		//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
 	}
-	register_templeos_memory(p, size, is_mmapped);
 	enter_templeos(&t);
 	return p;
 }
 
-void templeos_free_c_wrapper(void *p) {
+// free_for_templeos frees memory allocated for TempleOS (p could have been
+// allocated by calling MAlloc).
+void free_for_templeos(void *p) {
 	if (p == NULL) {
 		return;
 	}
-	struct templeos_thread t;
-	exit_templeos(&t);
-	
 	struct templeos_mem_entry_t *e = get_templeos_memory((uint64_t)p);
 	
 	if (DEBUG_ALLOC) {
@@ -705,6 +774,16 @@ void templeos_free_c_wrapper(void *p) {
 	}
 	
 	unregister_templeos_memory((uint64_t)p);
+}
+
+void templeos_free_c_wrapper(void *p) {
+	if (p == NULL) {
+		return;
+	}
+	struct templeos_thread t;
+	exit_templeos(&t);
+	
+	free_for_templeos(p);
 	
 	enter_templeos(&t);
 }

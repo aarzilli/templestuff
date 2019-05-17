@@ -11,6 +11,7 @@ void writestr(int fd, char *s);
 bool extension_is(char *s, char *ext);
 void signal_handler(int sig, siginfo_t *info, void *ucontext);
 void print_stack_trace(FILE *out, uint64_t rip, uint64_t rbp);
+char *fileconcat(char *p1, char *p2);
 
 // hash.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct hash_t {
@@ -71,6 +72,8 @@ void enter_templeos(struct templeos_thread *t);
 void exit_templeos(struct templeos_thread *t);
 void call_templeos(struct templeos_thread *t, char *name);
 void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3);
+void *malloc_for_templeos(uint64_t size, bool executable);
+void free_for_templeos(void *p);
 void register_templeos_memory(void *p, size_t sz, bool is_mmapped);
 void *templeos_memory_calloc(size_t sz);
 struct templeos_mem_entry_t *get_templeos_memory(uint64_t p);
@@ -87,8 +90,9 @@ void print_hash_table(FILE *out, struct CTask *task);
 
 extern void putchar_asm_wrapper(void);
 extern void drvlock_asm_wrapper(void);
-extern void redseafilefind_asm_wrapper(void);
 extern void templeos_malloc_asm_wrapper(void);
 extern void templeos_free_asm_wrapper(void);
+extern void redseafilefind_asm_wrapper(void);
+extern void redseafileread_asm_wrapper(void);
 
 #endif
