@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -116,9 +117,8 @@ type dirEntry struct {
 	clus, size int64
 	time       uint32
 	date       int32 // number of days since the birth of Christ
-
-	dirChilds    []*dirEntry
-	expandedSize int64
+	dirChilds  []*dirEntry
+	autoExpand bool
 }
 
 const _RS_DIR_ENTRY_SIZE = 64
@@ -188,9 +188,6 @@ func (e *dirEntry) Attr() fuse.Attr {
 	t := time.Date(int(year), 0, 0, 0, 0, 0, 0, time.Local) //TODO: is this wrong?
 	t.Add(time.Duration(int64(rest*60*60*24)+int64(e.time)) * time.Second)
 	sz := uint64(e.size)
-	if e.attr&_RS_ATTR_COMPRESSED != 0 {
-		sz = uint64(e.expandedSize)
-	}
 	return fuse.Attr{
 		Mode:   mode,
 		Size:   sz,
@@ -253,10 +250,16 @@ func (e *dirEntry) getDirChilds() []*dirEntry {
 		if child.clus == e.clus || (child.attr&_RS_ATTR_DELETED != 0) {
 			continue
 		}
-		if child.attr&_RS_ATTR_COMPRESSED != 0 {
-			child.expandedSize = readExpandedSizeLocked(child.clus, buf2)
-		}
 		e.dirChilds = append(e.dirChilds, child)
+		if (child.attr&_RS_ATTR_COMPRESSED != 0) && strings.HasSuffix(child.name, ".Z") {
+			echild := &dirEntry{}
+			*echild = *child
+			echild.name = echild.name[:len(echild.name)-2]
+			echild.size = readExpandedSizeLocked(child.clus, buf2)
+			echild.autoExpand = true
+			e.dirChilds = append(e.dirChilds, echild)
+		}
+
 	}
 
 	return e.dirChilds
@@ -268,11 +271,15 @@ func (e *dirEntry) ReadDir(intr fuse.Intr) ([]fuse.Dirent, fuse.Error) {
 	r := make([]fuse.Dirent, 0, len(dirChilds))
 
 	for _, child := range dirChilds {
-		r = append(r, fuse.Dirent{
+		fdirent := fuse.Dirent{
 			Inode: uint64(child.clus),
 			Type:  0,
 			Name:  child.name,
-		})
+		}
+		if child.autoExpand {
+			fdirent.Inode = uint64(-child.clus)
+		}
+		r = append(r, fdirent)
 	}
 
 	return r, nil
@@ -295,9 +302,8 @@ func (e *dirEntry) ReadAll(intr fuse.Intr) ([]byte, fuse.Error) {
 		return nil, fuse.EIO
 	}
 
-	if e.attr&_RS_ATTR_COMPRESSED != 0 {
+	if e.attr&_RS_ATTR_COMPRESSED != 0 && e.autoExpand {
 		exp := tosz.ExpandFile(b)
-
 		return exp, nil
 	}
 
