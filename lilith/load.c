@@ -146,7 +146,7 @@ void load_pass1(uint8_t *patch_table, uint8_t *module_base) {
 			int64_t sz = *((int64_t *)cur);
 			cur += sizeof(int64_t);
 			uint8_t *ptr3 = malloc(sz);
-			register_templeos_memory(ptr3, sz);
+			register_templeos_memory(ptr3, sz, false);
 
 			if (*st_ptr) {
 				symbols_put(st_ptr, HTT_EXPORT_SYS_SYM|HTF_IMM, (uint64_t)ptr3, 0);

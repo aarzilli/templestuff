@@ -20,7 +20,8 @@
 
 #define DEBUG true
 #define DEBUG_LOAD_PASS1 false
-#define DEBUG_FILE_FIND true
+#define DEBUG_FILE_FIND false
+#define DEBUG_ALLOC false
 #define IN_GDB false
 
 #define DRIVE_LETTER 'C'

@@ -8,7 +8,7 @@ void *malloc_executable_aligned(size_t size, int64_t alignment, int64_t misalign
 	// note that MAP_32BIT is fundamental, this will break if the ptr3 can't be represented in 32bits, if linux ever stops honoring MAP_32BIT we're going to be fucked hard.
 	uint8_t *res=(uint8_t *)((((uint64_t)(ptr+sizeof(int64_t)+mask))&~mask)+misalignment);
 	//res(I64 *)[-1]=ptr-res; // wtf is this?
-	register_templeos_memory(res, size);
+	register_templeos_memory(res, size, true);
 	return res;
 }
 

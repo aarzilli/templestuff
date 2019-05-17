@@ -363,6 +363,8 @@ exit_templeos_failed:
 struct templeos_mem_entry_t {
 	void *mem;
 	uint64_t sz;
+	bool used;
+	bool is_mmapped;
 };
 
 struct templeos_mem_map_t {
@@ -373,7 +375,9 @@ struct templeos_mem_map_t {
 
 #define TEMPLEOS_MEM_MAP_INITIAL_SIZE 20
 
-void register_templeos_memory(void *p, size_t sz) {
+void register_templeos_memory(void *p, size_t sz, bool is_mmapped) {
+	//TODO: register_templeos_memory is inefficient (maybe we shouldn't even call it?)
+
 	if (templeos_mem_map.v == NULL) {
 		templeos_mem_map.v = (struct templeos_mem_entry_t *)calloc(TEMPLEOS_MEM_MAP_INITIAL_SIZE, sizeof(struct templeos_mem_entry_t));
 		templeos_mem_map.cap = TEMPLEOS_MEM_MAP_INITIAL_SIZE;
@@ -384,19 +388,31 @@ void register_templeos_memory(void *p, size_t sz) {
 		templeos_mem_map.cap *= 2;
 		templeos_mem_map.v = realloc(templeos_mem_map.v, sizeof(struct templeos_mem_entry_t) * templeos_mem_map.cap);
 	}
+	templeos_mem_map.v[templeos_mem_map.len].used = true;
 	templeos_mem_map.v[templeos_mem_map.len].mem = p;
 	templeos_mem_map.v[templeos_mem_map.len].sz = sz;
+	templeos_mem_map.v[templeos_mem_map.len].is_mmapped = is_mmapped;
 	++templeos_mem_map.len;
 }
 
-bool is_templeos_memory(uint64_t p) {
+void unregister_templeos_memory(uint64_t p) {
+	struct templeos_mem_entry_t *e = get_templeos_memory(p);
+	e->used = false;
+}
+
+struct templeos_mem_entry_t *get_templeos_memory(uint64_t p) {
 	for (int i = 0; i < templeos_mem_map.len; ++i) {
 		struct templeos_mem_entry_t e = templeos_mem_map.v[i];
-		if ((((uint64_t)e.mem) <= p) && (p < (((uint64_t)e.mem) + e.sz))) {
-			return true;
+		if (e.used && (((uint64_t)e.mem) <= p) && (p < (((uint64_t)e.mem) + e.sz))) {
+			return &templeos_mem_map.v[i];
 		}
 	}
-	return false;
+	return NULL;
+}
+
+bool is_templeos_memory(uint64_t p) {
+	struct templeos_mem_entry_t *e = get_templeos_memory(p);
+	return e != NULL;
 }
 
 void blk_pool_init(struct CBlkPool *bp, int64_t pags) {
@@ -449,7 +465,7 @@ struct CHash {
 void *templeos_memory_calloc(size_t sz) {
 	void *r = malloc(sz);
 	memset(r, 0, sz);
-	register_templeos_memory(r, sz);
+	register_templeos_memory(r, sz, false);
 	return r;
 }
 
@@ -565,9 +581,8 @@ int64_t redseafilefind_c_wrapper(uint64_t dv, int64_t cur_dir_clus, uint8_t *nam
 	
 	if (DEBUG_FILE_FIND) {
 		printf("RedSeaFileFind([%s] %016lx, [%s], fuf_flags=%lx)\n", dpath, cur_dir_clus, name, fuf_flags);
+		print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
 	}
-	
-	print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
 	
 	DIR *d = opendir(dpath);
 	struct dirent *ent = NULL;
@@ -623,7 +638,9 @@ int64_t redseafilefind_c_wrapper(uint64_t dv, int64_t cur_dir_clus, uint8_t *nam
 		printf("\tnot found\n");
 	}
 	
-	printf("cur dir: %s %p\n", t.Fs->cur_dir, t.Fs->cur_dir);
+	if (DEBUG_FILE_FIND) {
+		printf("cur dir: %s %p\n", t.Fs->cur_dir, t.Fs->cur_dir);
+	}
 
 	closedir(d);
 	
@@ -636,24 +653,58 @@ void *templeos_malloc_c_wrapper(uint64_t size, uint64_t mem_task) {
 	exit_templeos(&t);
 	
 	void *p;
+	bool is_mmapped = false;
 	switch (mem_task) {
 	case 0x02:
 		p = mmap(NULL, size, PROT_EXEC|PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_32BIT, -1, 0);
+		is_mmapped = true;
 	default:
 		p = malloc(size);
 	}
 	
-	//printf("Allocated %p to %p (%lx)\n", p, p+size, size);
-	register_templeos_memory(p, size);
+	if (DEBUG_ALLOC) {
+		printf("Allocated %p to %p (%lx)\n", p, p+size, size);
+		//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
+	}
+	register_templeos_memory(p, size, is_mmapped);
 	enter_templeos(&t);
 	return p;
 }
 
 void templeos_free_c_wrapper(void *p) {
+	if (p == NULL) {
+		return;
+	}
 	struct templeos_thread t;
 	exit_templeos(&t);
 	
-	free(p);
+	struct templeos_mem_entry_t *e = get_templeos_memory((uint64_t)p);
+	
+	if (DEBUG_ALLOC) {
+		printf("Freeing %p (%p)", p, e);
+		if (e != NULL) {
+			printf(" mem=%p sz=%lx is_mmapped=%d", e->mem, e->sz, e->is_mmapped);
+			if (p != e->mem) {
+				printf(" MISMATCH");
+			}
+		}
+		printf("\n");
+		//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
+	}
+	
+	if (e == NULL) {
+		printf("trying to free unknown memory %p\n", p);
+		fflush(stdout);
+		_exit(0);
+	}
+	
+	if (e->is_mmapped) {
+		munmap(p, e->sz);
+	} else {
+		free(e->mem);
+	}
+	
+	unregister_templeos_memory((uint64_t)p);
 	
 	enter_templeos(&t);
 }

@@ -132,7 +132,7 @@ redseafilefind_asm_wrapper:
 	movq 0x30(%rbp), %r8
 	call redseafilefind_c_wrapper
 	pop_registers_except_rax
-	ret $0x20
+	ret $0x28
 
 	.text
 	.globl templeos_malloc_asm_wrapper
