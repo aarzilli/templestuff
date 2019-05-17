@@ -247,26 +247,24 @@ void load_one_import(uint8_t **psrc, uint8_t *module_base, int64_t ld_flags) {
 	*psrc = src-1;
 }
 
-void load_kernel(char *path) {
-	size_t sz;
-	void *mem = load_file(path, &sz);
+// size of TOS binary header in bytes
+#define TOSB_HEADER_SIZE 32
 
-	if (DEBUG) {
-		printf("loaded at %p\n", mem);
-	}
+char *TOSB_SIGNATURE = "TOSB"; // signature at the start of all TempleOS binary files
 
+void load_kernel(void) {
 	// The code that follows is adapted from Load() in D:/Kernel/KLoad.HC.Z
 
-	if (strncmp(((char *)mem)+4, TOSB_SIGNATURE, strlen(TOSB_SIGNATURE)) != 0) {
+	if (strncmp(((char *)kernel_bin_c)+4, TOSB_SIGNATURE, strlen(TOSB_SIGNATURE)) != 0) {
 		fflush(stdout);
-		fprintf(stderr, "signature check failed on %s", path);
+		fprintf(stderr, "signature check failed on kernel\n");
 		exit(EXIT_FAILURE);
 	}
 
-	uint8_t module_align_bits = (uint8_t)(((char *)mem)[2]);
-	uint64_t org = read_uint64(mem, 8);
-	uint64_t patch_table_offset = read_uint64(mem, 16);
-	uint64_t file_size = read_uint64(mem, 16+8);
+	uint8_t module_align_bits = (uint8_t)(((char *)kernel_bin_c)[2]);
+	uint64_t org = read_uint64(kernel_bin_c, 8);
+	uint64_t patch_table_offset = read_uint64(kernel_bin_c, 16);
+	uint64_t file_size = read_uint64(kernel_bin_c, 16+8);
 
 	int64_t module_align = 1 << module_align_bits;
 
@@ -277,9 +275,9 @@ void load_kernel(char *path) {
 		printf("file_size %lx\n", file_size);
 	}
 
-	if (file_size != sz) {
+	if (file_size != KERNEL_BIN_C_SIZE) {
 		fflush(stdout);
-		fprintf(stderr, "file size mismatch: on disk = %lx in file = %lx\n", sz, file_size);
+		fprintf(stderr, "file size mismatch: on disk = %x in file = %lx\n", KERNEL_BIN_C_SIZE, file_size);
 		exit(EXIT_FAILURE);
 	}
 
@@ -299,14 +297,12 @@ void load_kernel(char *path) {
 	if (misalignment < 0) misalignment &= module_align-1;
 	if (module_align < 16) module_align = 16;
 
-	void *xmem = malloc_executable_aligned(sz, module_align, misalignment);
-	memcpy(xmem, mem, sz);
-	free(mem);
-	mem = xmem;
+	void *mem = malloc_executable_aligned(KERNEL_BIN_C_SIZE, module_align, misalignment);
+	memcpy(mem, kernel_bin_c, KERNEL_BIN_C_SIZE);
 
 	if (DEBUG) {
 		printf("misalignment %ld (module_align %ld)\n", misalignment, module_align);
-		printf("new location at %p\n", xmem);
+		printf("new location at %p\n", mem);
 	}		
 
 	void *module_base = (void *)((char *)mem + TOSB_HEADER_SIZE);

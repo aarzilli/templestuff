@@ -30,6 +30,7 @@
 char *temple_root;
 
 #include "defs.h"
+#include "static.c"
 #include "utils.c"
 #include "file.c"
 #include "load.c"
@@ -49,14 +50,11 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "TEMPLEOS environment variable is not set\n");
 		exit(EXIT_FAILURE);
 	}
-	
-	char *kernel_path;
-	asprintf(&kernel_path, "%s/0000Boot/0000Kernel.BIN.C", temple_root);
 
 	hash_init(&symbols, 4096);
 	hash_init(&paths_table, 4096);
 	
-	load_kernel(kernel_path);
+	load_kernel();
 	
 	struct templeos_thread t;
 	init_templeos(&t, &argc);
@@ -81,7 +79,9 @@ int main(int argc, char *argv[]) {
 		}
 		call_templeos3(&t, "Load", (uint64_t)(argv[1]), 0, INT64_MAX);
 	} else if (extension_is(argv[1], ".HC") || extension_is(argv[1], ".HC.Z")) {
+		char *compiler_path = fileconcat(temple_root, "Compiler/Compiler.BIN.Z");
 		fprintf(stderr, "Not implemented (HolyC)\n");
+		free(compiler_path);
 	} else {
 		fprintf(stderr, "Unknown extension %s\n", argv[1]);
 	}

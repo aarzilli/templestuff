@@ -31,9 +31,6 @@ void hash_put(struct hash_t *h, char *key, struct export_t *val);
 struct hash_entry_t *hash_find_closest_entry_before(struct hash_t *h, uint64_t v);
 int hashfn(char *key);
 
-// file.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
-void *load_file(char *path, size_t *psz);
-
 // load.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 extern struct hash_t symbols;
 
@@ -51,7 +48,7 @@ struct templeos_thread {
 void load_pass1(uint8_t *patch_table, uint8_t *module_base);
 void load_one_import(uint8_t **patch_table, uint8_t *module_base, int64_t ld_flags);
 struct export_t *symbols_put(char *key, uint32_t type, uint64_t val, void *module_base);
-void load_kernel(char *path);
+void load_kernel(void);
 void kernel_patch_instruction(char *name, off_t off, uint8_t original, uint8_t replacement);
 
 // task.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
