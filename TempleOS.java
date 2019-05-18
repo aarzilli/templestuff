@@ -135,7 +135,16 @@ public class TempleOS extends GhidraScript {
 	protected static final boolean debugRelocationReader = false;
 	protected static final boolean createPatchTableReferences = false;
 	
-	public void scanPatchTable(final Reader rdr, final long patchTableOffset, final Data patchTableOffsetData, final Memory mem, final Address moduleBase, final int pass) throws Exception {
+	public void createFunctionOrRename(final Address addr, final String name) throws Exception {
+		final Function f = getFunctionAt(addr);
+		if (f == null) {
+			createFunction(addr, name);
+		} else {
+			f.setName(name, SourceType.USER_DEFINED);
+		}
+	}
+	
+	public void scanPatchTable(final Reader rdr, final long patchTableOffset, final Data patchTableOffsetData, final Memory mem, final Address moduleBase, final int pass, final Program p) throws Exception {
 		printf("patch_table_offset %x (pass %d)\n", patchTableOffset, pass);
 		rdr.seekStart((int)patchTableOffset);
 		if (pass == 1) {
@@ -176,8 +185,9 @@ public class TempleOS extends GhidraScript {
 				setEOLComment(start, String.format("export entry %d %s arg=%04x <%s>", etype, relocName, arg, str));
 				if (pass == 1) {
 					final Address addr = moduleBase.add(arg);
-					createFunction(addr, str);
+					createFunctionOrRename(addr, str);
 					disassemble(addr);
+					analyzeChanges(p);
 					createMemoryReference(argData, addr, RefType.DATA);
 				}
 				break;
@@ -194,8 +204,9 @@ public class TempleOS extends GhidraScript {
 			case IET_REL_I64: // fallthrough
 			case IET_IMM_I64: 
 				if (pass == 2) {
-					setEOLComment(start, String.format("import entry %d %s arg=%04x <%s>", etype, relocName, arg, str));
-					if (str != "") {
+					String comment = String.format("import entry %d %s arg=%04x <%s>", etype, relocName, arg, str);
+					comment = comment + " " + moduleBase.add(arg);
+					if (!str.equals("")) {
 						lastImportName = str;
 					}
 					final Instruction instr = getInstructionContaining(moduleBase.add(arg));
@@ -203,10 +214,15 @@ public class TempleOS extends GhidraScript {
 						if (createPatchTableReferences) {
 							createMemoryReference(argData, moduleBase.add(arg), RefType.DATA);
 						}
-						setEOLComment(moduleBase.add(arg), lastImportName);
+						String dest = lastImportName;
+						if (dest.equals("")) {
+							dest = "<unknown>";
+						}
+						setEOLComment(moduleBase.add(arg), dest);
 					} else {
-						setEOLComment(start, "no instruction at specified destination");
+						comment = comment + " no instruction at specified destination ";
 					}
+					setEOLComment(start, comment);
 				}
 				break;
 			
@@ -267,8 +283,9 @@ public class TempleOS extends GhidraScript {
 				if (pass == 1) {
 					setEOLComment(start, String.format("main entry %d %s arg=%04x <%s>", etype, relocName, arg, str));
 					final Address addr = moduleBase.add(arg);
-					createFunction(addr, "MAIN");
+					createFunctionOrRename(addr, "MAIN");
 					disassemble(addr);
+					analyzeChanges(p);
 				}
 				break;
 			}
@@ -321,8 +338,8 @@ public class TempleOS extends GhidraScript {
 		rdr.seekStart(0x10);
 		final long patchTableOffset = rdr.read64();
 		
-		scanPatchTable(rdr, patchTableOffset, patchTableOffsetData, mem, moduleBase, 1);
-		scanPatchTable(rdr, patchTableOffset, patchTableOffsetData, mem, moduleBase, 2);
+		scanPatchTable(rdr, patchTableOffset, patchTableOffsetData, mem, moduleBase, 1, p);
+		scanPatchTable(rdr, patchTableOffset, patchTableOffsetData, mem, moduleBase, 2, p);
 		println("Done");
 	}
 }
