@@ -408,13 +408,9 @@ void *find_entry_point(struct templeos_thread *t, char *name) {
 	}
 	
 	for (struct thiter it = thiter_new(t->Fs); thiter_valid(&it); thiter_next(&it)) {
-		if (it.he == NULL) {
+		if (!is_hash_type(it.he, HTT_EXPORT_SYS_SYM|HTF_IMM)) {
 			continue;
 		}
-		if (((it.he->type&HTT_EXPORT_SYS_SYM) == 0) || ((it.he->type&HTF_IMM) == 0)) {
-			continue;
-		}
-		
 		if (strcmp((char *)(it.he->str), name) != 0) {
 			continue;
 		}

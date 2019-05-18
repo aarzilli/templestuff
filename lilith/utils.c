@@ -51,7 +51,7 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 	uint64_t rbp = ucontext->uc_mcontext.gregs[REG_RBP];
 	
 	fprintf(stderr, "Received signal %d at 0x%lx\n", sig, rip);
-	print_stack_trace(stderr, rip, rbp);
+	print_stack_trace(stderr, t.Fs, rip, rbp);
 	
 	fprintf(stderr, "\nRegisters:\n");
 	
@@ -77,63 +77,6 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 	
 	fflush(stderr);
 	_exit(EXIT_FAILURE);
-}
-
-void print_stack_trace(FILE *out, uint64_t rip, uint64_t rbp) {
-	int count = 0;
-	
-	while ((count < 20) && (rbp != 0)) {
-		fprintf(out, "\trip=0x%lx rbp=0x%lx\n", rip, rbp);
-		
-		if (!is_templeos_memory(rip)) {
-			break;
-		}
-		
-		struct hash_entry_t *e = hash_find_closest_entry_before(&symbols, rip);
-		if (e != NULL) {
-			uint64_t ghidra_off = 0;
-			
-			if (e->val->module_base != 0) {
-				ghidra_off = rip - e->val->module_base + 0x10000020;
-			}
-			
-			fprintf(out, "\t\tat %s (0x%lx+0x%lx) ghidra=0x%lx\n", e->key, e->val->val, rip - e->val->val, ghidra_off);
-		}
-		
-		rip = *((uint64_t *)(rbp+0x8));
-		
-		if (STACKTRACE_PRINT_ARGS) {
-			fprintf(out, "\t\t\targs");
-			for (int i = 1; i <= 3; i++) {
-				fprintf(out, " %lx", *((uint64_t *)(rbp+0x8*(i+1))));
-			}
-			fprintf(out, "\n");
-		}
-		
-		rbp = *((uint64_t *)rbp);
-		++count;
-	}
-}
-
-void print_stack_trace_here(void) {
-	uint64_t rbp;
-	asm("movq %%rbp, %0" : "=r"(rbp));
-	
-	uint64_t rip = *((uint64_t *)(rbp+0x8));
-	
-	struct templeos_thread t;
-	bool itm = false;
-	
-	if (is_templeos_memory(rip)) {
-		itm = true;
-		exit_templeos(&t);
-	}
-	
-	print_stack_trace(stderr, rip, rbp);
-	
-	if (itm) {
-		enter_templeos(&t);
-	}
 }
 
 struct hash_t paths_table;

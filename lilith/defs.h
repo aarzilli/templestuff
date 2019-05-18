@@ -10,7 +10,6 @@ char *strclone(char *s);
 void writestr(int fd, char *s);
 bool extension_is(char *s, char *ext);
 void signal_handler(int sig, siginfo_t *info, void *ucontext);
-void print_stack_trace(FILE *out, uint64_t rip, uint64_t rbp);
 char *fileconcat(char *p1, char *p2);
 
 // hash.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -98,6 +97,11 @@ struct CHashExport {
 	int64_t	val;
 };
 
+struct CHashGeneric {
+	struct CHash super;
+	int64_t user_data0, user_data1, user_data2;
+};
+
 struct thiter {
 	struct CHashTable *h;
 	int i;
@@ -109,7 +113,11 @@ struct thiter thiter_new(struct CTask *task);
 void thiter_next(struct thiter *it);
 bool thiter_valid(struct thiter *it);
 
+bool is_hash_type(struct CHash *he, uint64_t type);
+
 void print_templeos_hash_table(FILE *out, struct CTask *task);
+
+void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp);
 
 // lilith.s //////////////////////////////////////////////////////////////////////////////////////////////////////////
 

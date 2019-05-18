@@ -131,7 +131,7 @@ public class TempleOS extends GhidraScript {
 		}
 	}
 	
-	protected static final boolean doCleanup = false;
+	protected static final boolean doCleanup = true;
 	protected static final boolean debugRelocationReader = false;
 	protected static final boolean createPatchTableReferences = false;
 	
