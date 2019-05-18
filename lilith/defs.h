@@ -92,4 +92,12 @@ extern void templeos_free_asm_wrapper(void);
 extern void redseafilefind_asm_wrapper(void);
 extern void redseafileread_asm_wrapper(void);
 
+// static.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct builtin_file {
+	char *name;
+	uint64_t size;
+	uint8_t *body;
+};
+
 #endif

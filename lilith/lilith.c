@@ -27,12 +27,9 @@
 
 #define DRIVE_LETTER 'C'
 
-char *temple_root;
-
 #include "defs.h"
 #include "static.c"
 #include "utils.c"
-#include "file.c"
 #include "load.c"
 #include "hash.c"
 #include "task.c"
@@ -41,13 +38,6 @@ int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		fflush(stdout);
 		fprintf(stderr, "wrong number of argumens\n");
-		exit(EXIT_FAILURE);
-	}
-
-	temple_root = getenv("TEMPLEOS");
-	if ((temple_root == NULL) || (*temple_root == 0)) {
-		fflush(stdout);
-		fprintf(stderr, "TEMPLEOS environment variable is not set\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -79,9 +69,9 @@ int main(int argc, char *argv[]) {
 		}
 		call_templeos3(&t, "Load", (uint64_t)(argv[1]), 0, INT64_MAX);
 	} else if (extension_is(argv[1], ".HC") || extension_is(argv[1], ".HC.Z")) {
-		char *compiler_path = fileconcat(temple_root, "Compiler/Compiler.BIN.Z");
-		fprintf(stderr, "Not implemented (HolyC)\n");
-		free(compiler_path);
+		char *p = "/Compiler.BIN.Z";
+		call_templeos3(&t, "Load", (uint64_t)p, LDF_SILENT, INT64_MAX);
+		call_templeos2(&t, "ExeFile", (uint64_t)(argv[1]), 0);
 	} else {
 		fprintf(stderr, "Unknown extension %s\n", argv[1]);
 	}

@@ -335,6 +335,9 @@ void load_kernel(void) {
 	// the kernel needs to know where it's loaded, the 16bit startup code would do this
 	kernel_patch_var64("mem_boot_base", (uint64_t)module_base);
 	kernel_patch_var64("sys_boot_patch_table_base", (uint64_t)(mem + patch_table_offset));
+	
+	// this is used here and there to check that there is enough space
+	kernel_patch_var64("mem_mapped_space", 4294967296);
 }
 
 struct export_t *symbols_put(char *key, uint32_t type, uint64_t val, void* module_base) {

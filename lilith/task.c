@@ -268,6 +268,7 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	sigaction(SIGFPE, &act, NULL);
 	sigaction(SIGABRT, &act, NULL);
 	sigaction(SIGSEGV, &act, NULL);
+	sigaction(SIGTRAP, &act, NULL);
 }
 
 void enter_templeos(struct templeos_thread *t) {
@@ -584,6 +585,25 @@ int64_t redseafilefind_c_wrapper(uint64_t dv, int64_t cur_dir_clus, uint8_t *nam
 		//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
 	}
 	
+	if (((fuf_flags & FUF_JUST_DIRS) == 0) && (strcmp(dpath, "/") == 0)) {
+		for (int i = 0; i < NUM_BUILTIN_FILES; ++i) {
+			if (strcmp((char *)name, builtin_files[i].name) == 0) {
+				if (_res != NULL) {
+					_res->attr |= RS_ATTR_COMPRESSED;
+				}
+				strcpy((char *)(_res->name), builtin_files[i].name);
+				_res->size = builtin_files[i].size;
+				_res->datetime = 0;
+				_res->clus = intern_path(fileconcat(dpath, builtin_files[i].name));
+				if (DEBUG_FILE_SYSTEM) {
+					printf("\tfound (%s)\n", builtin_files[i].name);
+				}
+				enter_templeos(&t);
+				return 1;
+			}
+		}
+	}
+	
 	DIR *d = opendir(dpath);
 	struct dirent *ent = NULL;
 	
@@ -654,9 +674,33 @@ char *redseafileread_c_wrapper(uint64_t cdrv, char *cur_dir, char *filename, int
 		//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
 	}
 	
+	if (strcmp(cur_dir, "/") == 0) {
+		for (int i = 0; i < NUM_BUILTIN_FILES; ++i) {
+			if (strcmp(filename, builtin_files[i].name) == 0) {
+				if (DEBUG_FILE_SYSTEM) {
+					printf("\tCompiler.BIN.Z built in\n");
+				}
+				if (pattr != NULL) {
+					*pattr = 0;
+					if (extension_is(filename, ".Z")) {
+						*pattr |= RS_ATTR_COMPRESSED;
+					}
+				}
+				if (psize != NULL) {
+					*psize = builtin_files[i].size;
+				}
+				char *buf = malloc_for_templeos(builtin_files[i].size, false);
+				fflush(stdout);
+				memcpy(buf, builtin_files[i].body, builtin_files[i].size);
+				enter_templeos(&t);
+				return buf;
+			}
+		}
+	}
+	
 	char *p = fileconcat(cur_dir, filename);
 	char *buf = NULL;
-	
+		
 	struct stat statbuf;
 	memset(&statbuf, 0, sizeof(struct stat));
 	if (stat(p, &statbuf) == 0) {
