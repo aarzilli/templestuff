@@ -112,9 +112,12 @@ const (
 )
 
 type dirEntry struct {
-	attr       rsAttr
-	name       string
-	clus, size int64
+	attr rsAttr
+	name string
+	clus int64
+
+	diskSize, viewSize int64
+
 	time       uint32
 	date       int32 // number of days since the birth of Christ
 	dirChilds  []*dirEntry
@@ -148,7 +151,8 @@ func readDirectoryEntry(fh io.ReadSeeker) *dirEntry {
 	}
 	r.name = string(d)
 	r.clus = int64(binary.LittleEndian.Uint64(buf[2+38 : 2+38+8]))
-	r.size = int64(binary.LittleEndian.Uint64(buf[2+38+8 : 2+38+16]))
+	r.diskSize = int64(binary.LittleEndian.Uint64(buf[2+38+8 : 2+38+16]))
+	r.viewSize = r.diskSize
 	r.time = binary.LittleEndian.Uint32(buf[2+38+16 : 2+38+20])
 	r.date = int32(binary.LittleEndian.Uint32(buf[2+38+20 : 2+38+24]))
 	return &r
@@ -187,7 +191,7 @@ func (e *dirEntry) Attr() fuse.Attr {
 	rest := e.date - year
 	t := time.Date(int(year), 0, 0, 0, 0, 0, 0, time.Local) //TODO: is this wrong?
 	t.Add(time.Duration(int64(rest*60*60*24)+int64(e.time)) * time.Second)
-	sz := uint64(e.size)
+	sz := uint64(e.viewSize)
 	return fuse.Attr{
 		Mode:   mode,
 		Size:   sz,
@@ -228,7 +232,7 @@ func (e *dirEntry) getDirChilds() []*dirEntry {
 		return nil
 	}
 
-	buf := make([]byte, e.size)
+	buf := make([]byte, e.diskSize)
 	_, err = io.ReadFull(FH, buf)
 	if err != nil {
 		log.Printf("error reading directory at clus %#x: %v", e.clus, err)
@@ -255,7 +259,7 @@ func (e *dirEntry) getDirChilds() []*dirEntry {
 			echild := &dirEntry{}
 			*echild = *child
 			echild.name = echild.name[:len(echild.name)-2]
-			echild.size = readExpandedSizeLocked(child.clus, buf2)
+			echild.viewSize = readExpandedSizeLocked(child.clus, buf2)
 			echild.autoExpand = true
 			e.dirChilds = append(e.dirChilds, echild)
 		}
@@ -295,14 +299,18 @@ func (e *dirEntry) ReadAll(intr fuse.Intr) ([]byte, fuse.Error) {
 		return nil, fuse.EIO
 	}
 
-	b := make([]byte, e.size)
+	b := make([]byte, e.diskSize)
 	_, err = io.ReadFull(FH, b)
 	if err != nil {
-		log.Printf("error reading file at clus %#x: %v", e.clus, err)
+		log.Printf("error reading file %#v: %v", e, err)
 		return nil, fuse.EIO
 	}
 
 	if e.attr&_RS_ATTR_COMPRESSED != 0 && e.autoExpand {
+		if len(b) <= 17 {
+			log.Printf("trying to decompress zero-length file %#v %d\n", e, len(b))
+			return b, nil
+		}
 		exp := tosz.ExpandFile(b)
 		return exp, nil
 	}
