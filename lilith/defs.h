@@ -53,35 +53,63 @@ void kernel_patch_instruction(char *name, off_t off, uint8_t original, uint8_t r
 
 // task.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define MEM_PAG_BITS 9
-#define MEM_FREE_PAG_HASH_SIZE  0x100
-
-struct CBlkPool {
-	int64_t   locked_flags, alloced_u8s, used_u8s;
-	struct CMemBlk *mem_free_lst,
-		*mem_free_2meg_lst, //This is for Sup1CodeScraps/Mem/Mem2Meg.HC.
-		*free_pag_hash[MEM_FREE_PAG_HASH_SIZE],
-		*free_pag_hash2[64-MEM_PAG_BITS];
-};
-
 void init_templeos(struct templeos_thread *t, void *stk_base_estimate);
 void enter_templeos(struct templeos_thread *t);
 void exit_templeos(struct templeos_thread *t);
+
 void call_templeos(struct templeos_thread *t, char *name);
+uint64_t call_templeos2(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2);
 void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3);
-void *malloc_for_templeos(uint64_t size, bool executable);
+
+void *malloc_for_templeos(uint64_t size, bool executable, bool zero);
 void free_for_templeos(void *p);
 void register_templeos_memory(void *p, size_t sz, bool is_mmapped);
-void *templeos_memory_calloc(size_t sz);
 struct templeos_mem_entry_t *get_templeos_memory(uint64_t p);
 bool is_templeos_memory(uint64_t p);
-void blk_pool_init(struct CBlkPool *bp, int64_t pags);
-void blk_pool_add(struct CBlkPool *bp, struct CMemBlk *m, int64_t pags);
-struct CHashTable *templeos_hash_table_new(uint64_t size);
-struct CHeapCtrl *heap_ctrl_init(struct CBlkPool *bp, struct CTask *task);
+
 void trampoline_kernel_patch(char *name, void dest(void));
 void kernel_patch_var64(char *name, uint64_t val);
-void print_hash_table(FILE *out, struct CTask *task);
+
+// templeos_hash_table.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct CHashTable {
+  struct CHashTable *next;
+  int64_t   mask,locked_flags;
+  struct CHash **body;
+};
+
+struct CHash {
+  struct CHash	*next;
+  uint8_t	*str;
+  uint32_t	type,
+	use_cnt; 
+};
+
+struct CHashSrcSym {
+	struct CHash super;
+	uint8_t	*src_link, *idx;
+	struct CDbgInfo *dbg_info;
+	uint8_t	*import_name;
+	struct CAOTImportExport *ie_lst;
+};
+
+struct CHashExport {
+	struct CHashSrcSym super;
+	int64_t	val;
+};
+
+struct thiter {
+	struct CHashTable *h;
+	int i;
+	bool first;
+	struct CHash *he;
+};
+
+struct thiter thiter_new(struct CTask *task);
+void thiter_next(struct thiter *it);
+bool thiter_valid(struct thiter *it);
+
+void print_templeos_hash_table(FILE *out, struct CTask *task);
 
 // lilith.s //////////////////////////////////////////////////////////////////////////////////////////////////////////
 

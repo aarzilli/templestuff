@@ -33,6 +33,7 @@
 #include "load.c"
 #include "hash.c"
 #include "task.c"
+#include "templeos_hash_table.c"
 
 int main(int argc, char *argv[]) {
 	if (argc != 2) {

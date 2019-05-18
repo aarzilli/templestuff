@@ -47,21 +47,6 @@ struct CWinScroll {
 	uint8_t    color,pad[3];
 };
 
-#define MEM_HEAP_HASH_SIZE 1024
-#define MEM_PAG_SIZE (1<<MEM_PAG_BITS)
-
-struct CHeapCtrl {
-	struct CBlkPool *bp; // 0x0
-	uint32_t   hc_signature, pad; // 0x8, 0xa
-	int64_t   locked_flags, alloced_u8s, used_u8s; // 0x10, 0x18, 0x20
-	struct CTask *mem_task; // 0x28
-	struct CMemBlk *next_mem_blk, *last_mem_blk; // 0x30, 0x38
-	struct CMemBlk *last_mergable; // 0x40
-	struct CMemUnused *malloc_free_lst;
-	struct CMemUsed *next_um,*last_um;
-	struct CMemUnused *heap_hash[MEM_HEAP_HASH_SIZE/sizeof(uint8_t *)];
-};
-
 struct CTask { //The Fs segment reg points to current CTask.
 	struct CTask *addr; //Self-addressed ptr
 	uint32_t   task_signature,win_inhibit;
@@ -224,11 +209,11 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Fs->data_heap = 0x1;
 	t->Fs->code_heap = 0x2;
 	
-	t->Fs->cur_dv = templeos_memory_calloc(sizeof(struct CDrv));
+	t->Fs->cur_dv = malloc_for_templeos(sizeof(struct CDrv), false, true);
 	t->Fs->cur_dv->dv_signature = 0x56535644;
 	t->Fs->cur_dv->fs_type = 1; // we're going to impersonate the RedSea file system (because it's easier)
 	t->Fs->cur_dv->drv_let = DRIVE_LETTER;
-	t->Fs->cur_dv->bd = templeos_memory_calloc(sizeof(struct CBlkDev));
+	t->Fs->cur_dv->bd = malloc_for_templeos(sizeof(struct CBlkDev), false, true);
 	t->Fs->cur_dv->bd->bd_signature = 0x56534442;
 	t->Fs->cur_dv->bd->type = 1; // Ram disk
 	
@@ -236,7 +221,7 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Fs->next_except = (struct CExcept *)(&(t->Fs->next_except));
 	t->Fs->last_except = (struct CExcept *)(&(t->Fs->next_except));
 	
-	t->Fs->stk = templeos_memory_calloc(sizeof(struct CTaskStk));
+	t->Fs->stk = malloc_for_templeos(sizeof(struct CTaskStk), false, true);
 	t->Fs->stk->stk_base = stk_base_estimate;
 	t->Fs->stk->stk_size = 4 * 1024 * 1024;
 	
@@ -416,67 +401,36 @@ bool is_templeos_memory(uint64_t p) {
 	return e != NULL;
 }
 
-void blk_pool_init(struct CBlkPool *bp, int64_t pags) {
-	int64_t num;
-	struct CMemBlk *m;
-	memset(bp,0,sizeof(struct CBlkPool));
-	m=(struct CMemBlk *)((((uint64_t)bp)+sizeof(struct CBlkPool)+MEM_PAG_SIZE-1)&~(MEM_PAG_SIZE-1)); // I'm iffy about this, this could be wrong
-	num=((int64_t)bp+(pags<<MEM_PAG_BITS)-(int64_t)m)>>MEM_PAG_BITS;
-	bp->alloced_u8s=(pags-num)<<MEM_PAG_BITS; //Compensate before num added.
-	blk_pool_add(bp,m,num);
-}
-
-struct CMemBlk {
-	struct CMemBlk *next,*last;
-	uint32_t   mb_signature,pags;
-};
-
-#define MBS_USED_SIGNATURE_VAL          (uint32_t)0x7355424d
-#define MBS_UNUSED_SIGNATURE_VAL        (uint32_t)0x6e55424d
-
-void blk_pool_add(struct CBlkPool *bp, struct CMemBlk *m, int64_t pags) {
-	m->next=bp->mem_free_lst;
-	m->pags=pags;
-	m->mb_signature=MBS_UNUSED_SIGNATURE_VAL;
-	bp->alloced_u8s+=pags<<MEM_PAG_BITS;
-	bp->mem_free_lst=m;
-}
-
-struct CMemUsed {
-	struct CHeapCtrl *hc;
-	uint8_t    *caller1,*caller2;
-	struct CMemUsed *next,*last;
-	int64_t   size;
-};
-
-struct CHashTable {
-  struct CHashTable *next;
-  int64_t   mask,locked_flags;
-  struct CHash **body;
-};
-
-struct CHash {
-  struct CHash	*next;
-  uint8_t	*str;
-  uint32_t	type,
-	use_cnt; 
-};
-
-
-void *templeos_memory_calloc(size_t sz) {
-	void *r = malloc(sz);
-	memset(r, 0, sz);
-	register_templeos_memory(r, sz, false);
-	return r;
+void *find_entry_point(struct templeos_thread *t, char *name) {
+	struct export_t *e = hash_get(&symbols, name);
+	if (e != NULL) {
+		return (void *)(e->val);
+	}
+	
+	for (struct thiter it = thiter_new(t->Fs); thiter_valid(&it); thiter_next(&it)) {
+		if (it.he == NULL) {
+			continue;
+		}
+		if (((it.he->type&HTT_EXPORT_SYS_SYM) == 0) || ((it.he->type&HTF_IMM) == 0)) {
+			continue;
+		}
+		
+		if (strcmp((char *)(it.he->str), name) != 0) {
+			continue;
+		}
+		
+		struct CHashExport *ex = (struct CHashExport *)(it.he);
+		return (void *)(ex->val);
+	}
+	return NULL;
 }
 
 void call_templeos(struct templeos_thread *t, char *name) {
-	struct export_t *e = hash_get(&symbols, name);
-	if (e == NULL) {
+	void *entry = find_entry_point(t, name);
+	if (entry == NULL) {
 		fprintf(stderr, "Could not call %s\n", name);
 		exit(EXIT_FAILURE);
 	}
-	void *entry = (void *)(e->val);
 	fflush(stdout);
 	fflush(stderr);
 	
@@ -485,32 +439,14 @@ void call_templeos(struct templeos_thread *t, char *name) {
 	exit_templeos(t);
 }
 
-extern void call_templeos3_asm(void *entry, uint64_t arg1, uint64_t arg2, uint64_t arg3);
-
-void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3) {
-	struct export_t *e = hash_get(&symbols, name);
-	if (e == NULL) {
-		fprintf(stderr, "Could not call %s\n", name);
-		exit(EXIT_FAILURE);
-	}
-	void *entry = (void *)(e->val);
-	fflush(stdout);
-	fflush(stderr);
-	
-	enter_templeos(t);
-	call_templeos3_asm(entry, arg1, arg2, arg3);
-	exit_templeos(t);
-}
-
 extern uint64_t call_templeos2_asm(void *entry, uint64_t arg1, uint64_t arg2);
 
 uint64_t call_templeos2(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2) {
-	struct export_t *e = hash_get(&symbols, name);
-	if (e == NULL) {
+	void *entry = find_entry_point(t, name);
+	if (entry == NULL) {
 		fprintf(stderr, "Could not call %s\n", name);
 		exit(EXIT_FAILURE);
 	}
-	void *entry = (void *)(e->val);
 	fflush(stdout);
 	fflush(stderr);
 	
@@ -518,6 +454,22 @@ uint64_t call_templeos2(struct templeos_thread *t, char *name, uint64_t arg1, ui
 	uint64_t r = call_templeos2_asm(entry, arg1, arg2);
 	exit_templeos(t);
 	return r;
+}
+
+extern void call_templeos3_asm(void *entry, uint64_t arg1, uint64_t arg2, uint64_t arg3);
+
+void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3) {
+	void *entry = find_entry_point(t, name);
+	if (entry == NULL) {
+		fprintf(stderr, "Could not call %s\n", name);
+		exit(EXIT_FAILURE);
+	}
+	fflush(stdout);
+	fflush(stderr);
+	
+	enter_templeos(t);
+	call_templeos3_asm(entry, arg1, arg2, arg3);
+	exit_templeos(t);
 }
 
 // trampoline_kernel_patch writes a jump to 'dest' at the entry point of the kernel function named 'name'.
@@ -689,7 +641,7 @@ char *redseafileread_c_wrapper(uint64_t cdrv, char *cur_dir, char *filename, int
 				if (psize != NULL) {
 					*psize = builtin_files[i].size;
 				}
-				char *buf = malloc_for_templeos(builtin_files[i].size, false);
+				char *buf = malloc_for_templeos(builtin_files[i].size, false, false);
 				fflush(stdout);
 				memcpy(buf, builtin_files[i].body, builtin_files[i].size);
 				enter_templeos(&t);
@@ -720,7 +672,7 @@ char *redseafileread_c_wrapper(uint64_t cdrv, char *cur_dir, char *filename, int
 		
 		int fd = open(p, O_RDONLY);
 		if (fd >= 0) {
-			buf = (char *)malloc_for_templeos(statbuf.st_size, false);
+			buf = (char *)malloc_for_templeos(statbuf.st_size, false, false);
 			char *rdbuf = buf;
 			int toread = statbuf.st_size;
 			
@@ -757,7 +709,7 @@ char *redseafileread_c_wrapper(uint64_t cdrv, char *cur_dir, char *filename, int
 
 // malloc_for_templeos returns a chunk of memory of the specified size
 // allocated for TempleOS (TempleOS will be able to call Free on it).
-void *malloc_for_templeos(uint64_t size, bool executable) {
+void *malloc_for_templeos(uint64_t size, bool executable, bool zero) {
 	void *p;
 	bool is_mmapped = false;
 	if (executable) {
@@ -765,6 +717,9 @@ void *malloc_for_templeos(uint64_t size, bool executable) {
 		is_mmapped = true;
 	} else {
 		p = malloc(size);
+	}
+	if (zero) {
+		memset(p, 0, size);
 	}
 	register_templeos_memory(p, size, is_mmapped);
 	return p;
@@ -774,8 +729,7 @@ void *templeos_malloc_c_wrapper(uint64_t size, uint64_t mem_task) {
 	struct templeos_thread t;
 	exit_templeos(&t);
 	
-	void *p = malloc_for_templeos(size, mem_task == 0x02);
-	
+	void *p = malloc_for_templeos(size, mem_task == 0x02, false);
 	
 	if (DEBUG_ALLOC) {
 		printf("Allocated %p to %p (%lx)\n", p, p+size, size);
@@ -832,50 +786,4 @@ void templeos_free_c_wrapper(void *p) {
 	enter_templeos(&t);
 }
 
-#define PRINT_HASH_TABLE_EARLY_EXIT true
 
-void print_hash_table(FILE *out, struct CTask *task) {
-	struct CHashTable *h = task->hash_table;
-	
-	while (h != NULL) {
-		fprintf(out, "hashtable at %p\n", h);
-		fprintf(out, "\tnext %p\n", h->next);
-		fprintf(out, "\tmask %lx (size: %lx)\n", h->mask, h->mask+1);
-		fprintf(out, "\tlocked_flags %lx\n", h->locked_flags);
-		fprintf(out, "\tbody %p\n", h->body);
-		
-		for (int i = 0; i < h->mask+1; ++i) {
-			struct CHash *he = h->body[i];
-			if (he == NULL) {
-				continue;
-			}
-			fprintf(out, "\t[%x] element at %p\n", i, he);
-			
-			bool early_exit = false;
-			
-			while (he != NULL) {
-				fprintf(out, "\t\tnext %p\n", he->next);
-				if (is_templeos_memory((uint64_t)(he->str))) {
-					fprintf(out, "\t\tstr %p [%s]\n", he->str, he->str);
-				} else {
-					fprintf(out, "\t\tstr %p\n", he->str);
-					early_exit = PRINT_HASH_TABLE_EARLY_EXIT;
-				}
-				fprintf(out, "\t\ttype %x\n", he->type);
-				fprintf(out, "\t\tuse_cnt %d\n", he->use_cnt);
-				fprintf(out, "\n");
-				he = he->next;
-				if ((he != NULL) && !is_templeos_memory((uint64_t)he)) {
-					fprintf(out, "\t\t(out of templeos memory)\n\n");
-					break;
-				}
-			}
-			
-			if (early_exit) {
-				return;
-			}
-		}
-		
-		h = h->next;
-	}
-}

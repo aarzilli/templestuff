@@ -72,7 +72,7 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 	
 	if (DEBUG_PRINT_TEMPLEOS_SYMBOL_TABLE_ON_SIGNAL) {
 		fprintf(stderr, "\nPrint system hash table:\n");
-		print_hash_table(stderr, t.Fs);
+		print_templeos_hash_table(stderr, t.Fs);
 	}
 	
 	fflush(stderr);
