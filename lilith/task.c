@@ -217,9 +217,21 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Fs->cur_dv->bd->bd_signature = 0x56534442;
 	t->Fs->cur_dv->bd->type = 1; // Ram disk
 	
-	// que_init...
+	// que_init
 	t->Fs->next_except = (struct CExcept *)(&(t->Fs->next_except));
 	t->Fs->last_except = (struct CExcept *)(&(t->Fs->next_except));
+	
+	// que_init
+	t->Fs->next_cc = (struct CCmpCtrl *)(&(t->Fs->next_cc));
+	t->Fs->last_cc = (struct CCmpCtrl *)(&(t->Fs->next_cc));
+	
+	// que_init
+	t->Fs->srv_ctrl.next_waiting = (void *)&(t->Fs->srv_ctrl.next_waiting);
+	t->Fs->srv_ctrl.last_waiting = (void *)&(t->Fs->srv_ctrl.last_waiting);
+	
+	// que_init
+	t->Fs->srv_ctrl.next_done = (void *)&(t->Fs->srv_ctrl.next_done);
+	t->Fs->srv_ctrl.last_done = (void *)&(t->Fs->srv_ctrl.last_done);
 	
 	t->Fs->stk = malloc_for_templeos(sizeof(struct CTaskStk), false, true);
 	t->Fs->stk->stk_base = stk_base_estimate;

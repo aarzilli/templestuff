@@ -326,12 +326,15 @@ void load_kernel(void) {
 	kernel_patch_instruction("_HASH_ADD", 0x1c, 0xfa, 0x90);
 	kernel_patch_instruction("ChkOnStk", 0x17, 0xfa, 0x90);
 	kernel_patch_instruction("Panic", 0x16, 0xfa, 0x90);
+	kernel_patch_instruction("ScanMsg", 0x3d, 0xfa, 0x90);
+	kernel_patch_instruction("JobsHndlr", 0x2b, 0xfa, 0x90);
 	
 	// Patch some kernel functions with our own stuff
 	trampoline_kernel_patch("_MALLOC", &templeos_malloc_asm_wrapper);
 	trampoline_kernel_patch("_FREE", &templeos_free_asm_wrapper);
 	trampoline_kernel_patch("RawPutChar", &putchar_asm_wrapper);
 	trampoline_kernel_patch("DrvLock", &drvlock_asm_wrapper);
+	trampoline_kernel_patch("JobsHndlr", &jobshdnlr_asm_wrapper);
 	trampoline_kernel_patch("RedSeaFileFind", &redseafilefind_asm_wrapper);
 	trampoline_kernel_patch("RedSeaFileRead", &redseafileread_asm_wrapper);
 	

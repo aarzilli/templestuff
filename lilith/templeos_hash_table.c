@@ -165,17 +165,15 @@ void symbolicate_frame(FILE *out, struct CTask *task, uint64_t rip) {
 	}
 	
 	uint64_t module_base = 0;
+	char *module_name = "unknown";
 	
 	if (bestmod != NULL) {
-		module_base = bestmod->user_data0;
+		module_base = bestmod->user_data0 + 0x20; // user_data0 is the header address
+		module_name = (char *)(bestmod->super.str);
 	}
 	
 	if (bestfn != NULL) {
-		fprintf(out, "\t\tat %s (0x%lx+0x%lx) ghidra=0x%lx\n", bestfn->super.super.str, bestfn->val, rip - bestfn->val, ghidra_off(rip, module_base));
-	}
-	
-	if (bestmod != NULL) {
-		fprintf(out, "\t\tmodule %s (0x%lx)\n", bestmod->super.str, bestmod->user_data0);
+		fprintf(out, "\t\tat %s!%s (0x%lx+0x%lx) module_base=0x%lx ghidra=0x%lx\n", module_name, bestfn->super.super.str, bestfn->val, rip - bestfn->val, module_base, ghidra_off(rip, module_base));
 	}
 }
 

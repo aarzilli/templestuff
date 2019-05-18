@@ -120,6 +120,14 @@ drvlock_asm_wrapper:
 	ret $0x8
 
 	.text
+	.globl jobshdnlr_asm_wrapper
+	.type jobshdnlr_asm_wrapper, @function
+jobshdnlr_asm_wrapper:
+	// don't do anything
+	movq $0, %rax
+	ret $0x8
+	
+	.text
 	.globl templeos_malloc_asm_wrapper
 	.type templeos_malloc_asm_wrapper, @function
 templeos_malloc_asm_wrapper:

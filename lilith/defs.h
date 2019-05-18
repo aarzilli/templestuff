@@ -123,6 +123,7 @@ void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp
 
 extern void putchar_asm_wrapper(void);
 extern void drvlock_asm_wrapper(void);
+extern void jobshdnlr_asm_wrapper(void);
 extern void templeos_malloc_asm_wrapper(void);
 extern void templeos_free_asm_wrapper(void);
 extern void redseafilefind_asm_wrapper(void);
@@ -135,5 +136,7 @@ struct builtin_file {
 	uint64_t size;
 	uint8_t *body;
 };
+extern uint8_t kernel_bin_c[];
+extern struct builtin_file builtin_files[];
 
 #endif
