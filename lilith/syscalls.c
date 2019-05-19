@@ -1,5 +1,4 @@
-void
-syscall_RawPutChar(uint64_t c) {
+void syscall_RawPutChar(uint64_t c) {
 	struct templeos_thread t;
 	exit_templeos(&t);
 	if (c != '\r') {
@@ -11,8 +10,8 @@ syscall_RawPutChar(uint64_t c) {
 	enter_templeos(&t);
 }
 
-//uint64_t syscall_DrvLock(void); NOP
-//uint64_t syscall_JobsHndlr(void); NOP
+//uint64_t syscall_DrvLock(uint64_t); NOP
+//uint64_t syscall_JobsHndlr(uint64_t); NOP
 
 void *syscall_MAlloc(uint64_t size, uint64_t mem_task) { // _MALLOC
 	struct templeos_thread t;

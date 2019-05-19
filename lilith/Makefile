@@ -9,5 +9,10 @@ clean:
 lilith: *.c *.s
 	gcc -g -mno-red-zone -o lilith -fno-stack-protector -Wall lilith.c lilith.s
 
-generate:
+generate_static:
 	go run scripts/generate.go
+
+syscalls.s: syscalls.c
+	go run scripts/syscall_generate.go
+
+	
