@@ -29,8 +29,9 @@
 #define DRIVE_LETTER 'C'
 char DRIVE_ROOT_PATH[] = { DRIVE_LETTER, ':', '\0' };
 
+char *templeos_root = NULL;
+
 #include "defs.h"
-#include "syscalls.h"
 #include "static.c"
 #include "utils.c"
 #include "load.c"
@@ -45,6 +46,13 @@ int main(int argc, char *argv[]) {
 		fflush(stdout);
 		fprintf(stderr, "wrong number of argumens\n");
 		exit(EXIT_FAILURE);
+	}
+	
+	templeos_root = getenv("TEMPLEOS");
+	
+	if ((templeos_root == NULL) || (strlen(templeos_root) == 0)) {
+		fprintf(stderr, "TEMPLEOS environment variable is not set!\n");
+		templeos_root = NULL;
 	}
 
 	hash_init(&symbols, 4096);

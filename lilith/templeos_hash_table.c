@@ -179,11 +179,23 @@ bool symbolicate_frame(FILE *out, struct CTask *task, uint64_t rip) {
 	return false;
 }
 
-void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp) {
+void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp, uint64_t rsp) {
 	int count = 0;
 	
 	while ((count < 20) && (rbp != 0)) {
-		fprintf(out, "\trip=0x%lx rbp=0x%lx\n", rip, rbp);
+		if (STACKTRACE_PRINT_ARGS && (rsp != 0) && (rbp > rsp) && (rbp - rsp < 0x800)) {
+			fprintf(out, "\t\t\tl/a:");
+			int count = 0;
+			for (uint64_t addr = rsp; addr < rbp; addr += 0x8) {
+				fprintf(out, " %lx", *((uint64_t *)addr));
+				if (((++count % 4) == 0) && (addr + 0x8 < rbp)) {
+					fprintf(out, "\n\t\t\t    ");
+				}
+			}
+			fprintf(out, "\n");
+		}
+	
+		fprintf(out, "\trip=0x%lx rbp=0x%lx rsp=0x%lx\n", rip, rbp, rsp);
 		
 		if (!is_templeos_memory(rip)) {
 			break;
@@ -191,19 +203,12 @@ void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp
 		
 		bool ispanic = symbolicate_frame(out, task, rip);
 		
+		if (ispanic && (count == 0)) {
+			fprintf(out, "\t\t\tPanic Message = [%s]\n", *((char **)(rbp+0x10)));
+		}
 		
 		rip = *((uint64_t *)(rbp+0x8));
-		
-		if (STACKTRACE_PRINT_ARGS) {
-			fprintf(out, "\t\t\targs");
-			for (int i = 1; i <= 3; i++) {
-				fprintf(out, " %lx", *((uint64_t *)(rbp+0x8*(i+1))));
-			}
-			fprintf(out, "\n");
-			if (ispanic && (count == 0)) {
-				fprintf(out, "\t\t\tPanic Message = [%s]\n", *((char **)(rbp+0x10)));
-			}
-		}
+		rsp = rbp+0x10;
 		
 		rbp = *((uint64_t *)rbp);
 		++count;
@@ -224,7 +229,7 @@ void print_stack_trace_here(void) {
 		exit_templeos(&t);
 	}
 	
-	print_stack_trace(stderr, t.Fs, rip, rbp);
+	print_stack_trace(stderr, t.Fs, rip, rbp, 0);
 	
 	if (itm) {
 		enter_templeos(&t);

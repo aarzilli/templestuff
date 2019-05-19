@@ -117,7 +117,7 @@ bool is_hash_type(struct CHash *he, uint64_t type);
 
 void print_templeos_hash_table(FILE *out, struct CTask *task);
 
-void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp);
+void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp, uint64_t rsp);
 
 // static.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
