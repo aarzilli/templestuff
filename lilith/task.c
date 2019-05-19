@@ -197,6 +197,7 @@ int arch_prctl(int code, unsigned long addr) {
 }
 
 #define TASK_HASH_TABLE_SIZE	(1<<10)
+#define TMP_FILE_NAME "~/Tmp.DD.Z"
 
 void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Gs = (struct CCPU *)calloc(1, sizeof(struct CCPU));
@@ -219,7 +220,7 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	char *w = get_current_dir_name();
 	t->Fs->cur_dir = (uint8_t *)fileconcat(DRIVE_ROOT_PATH, w, true);
 	free(w);
-	
+		
 	struct export_t *blkdev_export = hash_get(&symbols, "blkdev");
 	if (blkdev_export == NULL) {
 		fprintf(stderr, "Could not find global variable blkdev\n");
@@ -231,6 +232,8 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	char *homep = fileconcat(DRIVE_ROOT_PATH, getenv("HOME"), true);
 	blkdev->home_dir = (uint8_t *)homep;
 	blkdev->let_to_drv[DRIVE_LETTER - 'A'] = t->Fs->cur_dv;
+	blkdev->tmp_filename = malloc_for_templeos(strlen(TMP_FILE_NAME)+1, false, false);
+	strcpy((char *)(blkdev->tmp_filename), TMP_FILE_NAME);
 	
 	// que_init
 	t->Fs->next_except = (struct CExcept *)(&(t->Fs->next_except));
@@ -444,6 +447,23 @@ void call_templeos(struct templeos_thread *t, char *name) {
 	enter_templeos(t);
 	((void (*)(void))entry)();
 	exit_templeos(t);
+}
+
+extern uint64_t call_templeos1_asm(void *entry, uint64_t arg1);
+
+uint64_t call_templeos1(struct templeos_thread *t, char *name, uint64_t arg1) {
+	void *entry = find_entry_point(t, name);
+	if (entry == NULL) {
+		fprintf(stderr, "Could not call %s\n", name);
+		exit(EXIT_FAILURE);
+	}
+	fflush(stdout);
+	fflush(stderr);
+	
+	enter_templeos(t);
+	uint64_t r = call_templeos1_asm(entry, arg1);
+	exit_templeos(t);
+	return r;
 }
 
 extern uint64_t call_templeos2_asm(void *entry, uint64_t arg1, uint64_t arg2);

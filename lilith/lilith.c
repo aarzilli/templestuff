@@ -21,7 +21,7 @@
 
 #define DEBUG false
 #define DEBUG_LOAD_PASS1 false
-#define DEBUG_FILE_SYSTEM false
+#define DEBUG_FILE_SYSTEM false 
 #define DEBUG_ALLOC false
 #define DEBUG_PRINT_TEMPLEOS_SYMBOL_TABLE_ON_SIGNAL false
 #define IN_GDB false
@@ -69,8 +69,36 @@ int main(int argc, char *argv[]) {
 	if (DEBUG) {
 		printf("adam's hash table %p %lx %lx\n", t.Fs->hash_table, offsetof(struct CTask, hash_table), t.Fs->hash_table->mask);
 	}
+	
+	{ // SysGlblsInit
+		call_templeos1(&t, "DbgMode", 1);
+		call_templeos(&t, "KeyDevInit");
+		
+		uint8_t *rev_bits_table = malloc_for_templeos(256, false, true);
+		uint8_t *set_bits_table = malloc_for_templeos(256, false, true);
+		for (int i = 0; i < 256; ++i) {
+			for (int j = 0; j < 8; ++j) {
+				if (Bt((uint8_t *)(&i), 7-j)) {
+					Bts(rev_bits_table+i, j);
+				}
+				if (Bt((uint8_t *)(&i), j)) {
+					++set_bits_table[i];
+				}
+			}
+		}
+		kernel_patch_var64("rev_bits_table", (uint64_t)rev_bits_table);
+		kernel_patch_var64("set_bits_table", (uint64_t)set_bits_table);
+		
+		double *pow10_I64 = malloc_for_templeos(sizeof(double) * (308+308+2), false, true);
+		for (int i = -308; i < 309; i++) {
+			double f = (double)i;
+			uint64_t out = call_templeos1(&t, "_POW10", *((uint64_t *)(&f)));
+			pow10_I64[i+309] = *((double *)(&out));
+		}
+		kernel_patch_var64("pow10_I64", (uint64_t)pow10_I64);
+	}
+	
 	call_templeos(&t, "LoadKernel");
-	call_templeos(&t, "KeyDevInit");
 	
 	if (DEBUG) {
 		printf("Initialization Done\n");

@@ -109,3 +109,20 @@ char *fileconcat(char *p1, char *p2, bool for_templeos) {
 	strcat(p, p2);
 	return p;
 }
+
+int Bt(uint8_t *bit_field, int bit_num) {
+    bit_field+=bit_num>>3; // bit_field now points to the appropriate byte in src byte-array
+    bit_num&=7; // Get the last 3 bits of bit_num ( 7 is 111 in binary). Basically bit_num % 8. Signifies which bit in the byte now specified by bit_num we are looking at.
+    return (*bit_field & (1<<bit_num)) ? 1:0;
+}
+
+int Bts(uint8_t *bit_field, int bit_num) {
+    int result;
+    bit_field+=bit_num>>3; //Get the relevant byte (now in the dest bitfield)
+    bit_num&=7; // Get the right bit in that byte
+
+    result=*bit_field & (1<<bit_num); // Only used for return value
+
+    *bit_field|=(1<<bit_num); //Make a byte with the relevant bit switched on and OR it on the relevant byte
+    return (result) ? 1:0;
+}

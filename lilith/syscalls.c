@@ -58,42 +58,10 @@ struct CDirEntry {
 #define RS_ATTR_DIR 0x10
 #define RS_ATTR_COMPRESSED 0x400
 
-int64_t syscall_RedSeaFileFind(uint64_t dv, int64_t cur_dir_clus, uint8_t *name, struct CDirEntry *_res, int64_t fuf_flags) {
-	int64_t res = 0;
-	struct templeos_thread t;
-	exit_templeos(&t);
-		
-	char *dpath = "/";
-	if (cur_dir_clus != 0) {
-		dpath = (char *)cur_dir_clus;
-	}
-	
-	if (DEBUG_FILE_SYSTEM) {
-		printf("RedSeaFileFind([%s] %016lx, [%s], fuf_flags=%lx)\n", dpath, cur_dir_clus, name, fuf_flags);
-		//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
-	}
-	
-	if (((fuf_flags & FUF_JUST_DIRS) == 0) && (strcmp(dpath, "/") == 0)) {
-		for (int i = 0; i < NUM_BUILTIN_FILES; ++i) {
-			if (strcmp((char *)name, builtin_files[i].name) == 0) {
-				if (_res != NULL) {
-					_res->attr |= RS_ATTR_COMPRESSED;
-				}
-				strcpy((char *)(_res->name), builtin_files[i].name);
-				_res->size = builtin_files[i].size;
-				_res->datetime = 0;
-				_res->clus = intern_path(fileconcat(dpath, builtin_files[i].name, false));
-				if (DEBUG_FILE_SYSTEM) {
-					printf("\tfound (%s)\n", builtin_files[i].name);
-				}
-				enter_templeos(&t);
-				return 1;
-			}
-		}
-	}
-	
+int64_t filefind(char *dpath, char *name, struct CDirEntry *_res, int64_t fuf_flags) {
 	DIR *d = opendir(dpath);
 	struct dirent *ent = NULL;
+	uint64_t res = 0;
 	
 	for(;;) {
 		ent = readdir(d);
@@ -110,7 +78,7 @@ int64_t syscall_RedSeaFileFind(uint64_t dv, int64_t cur_dir_clus, uint8_t *name,
 				continue;
 			}
 		}
-		if (strcmp(ent->d_name, (char *)name) == 0) {
+		if (strcmp(ent->d_name, name) == 0) {
 			res = 1;
 			break;
 		}
@@ -142,15 +110,114 @@ int64_t syscall_RedSeaFileFind(uint64_t dv, int64_t cur_dir_clus, uint8_t *name,
 	} else if (DEBUG_FILE_SYSTEM) {
 		printf("\tnot found\n");
 	}
-	
-	if (DEBUG_FILE_SYSTEM) {
-		printf("cur dir: %s %p\n", t.Fs->cur_dir, t.Fs->cur_dir);
-	}
 
 	closedir(d);
 	
+	return res;
+}
+
+int64_t syscall_RedSeaFileFind(uint64_t dv, int64_t cur_dir_clus, uint8_t *name, struct CDirEntry *_res, int64_t fuf_flags) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+		
+	char *dpath = "/";
+	if (cur_dir_clus != 0) {
+		dpath = (char *)cur_dir_clus;
+	}
+	
+	if (DEBUG_FILE_SYSTEM) {
+		printf("RedSeaFileFind([%s] %016lx, [%s], fuf_flags=%lx)\n", dpath, cur_dir_clus, name, fuf_flags);
+		//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
+	}
+	
+	if (strcmp(dpath, "/") == 0) {
+		if ((fuf_flags & FUF_JUST_DIRS) == 0){
+			for (int i = 0; i < NUM_BUILTIN_FILES; ++i) {
+				if (strcmp((char *)name, builtin_files[i].name) == 0) {
+					if (_res != NULL) {
+						_res->attr |= RS_ATTR_COMPRESSED;
+					}
+					strcpy((char *)(_res->name), builtin_files[i].name);
+					_res->size = builtin_files[i].size;
+					_res->datetime = 0;
+					_res->clus = intern_path(fileconcat(dpath, builtin_files[i].name, false));
+					if (DEBUG_FILE_SYSTEM) {
+						printf("\tfound (%s)\n", builtin_files[i].name);
+					}
+					enter_templeos(&t);
+					return 1;
+				}
+			}
+		}
+		
+		if (templeos_root != NULL) {
+			char *p = fileconcat(templeos_root, dpath+1, false);
+			uint64_t res = filefind(p, (char *)name, _res, fuf_flags);
+			free(p);
+			if (res != 0) {
+				enter_templeos(&t);
+				return res;
+			}
+		}
+	}
+	
+	uint64_t res = filefind(dpath, (char *)name, _res, fuf_flags);
 	enter_templeos(&t);
 	return res;
+}
+
+char *fileread(char *p, int64_t *psize, int64_t *pattr) {
+	struct stat statbuf;
+	memset(&statbuf, 0, sizeof(struct stat));
+	if (stat(p, &statbuf) != 0) {
+		return NULL;
+	}
+	if (pattr != NULL) {
+		*pattr = 0;
+		if (extension_is(p, ".Z")) {
+			*pattr |= RS_ATTR_COMPRESSED;
+		}
+		if ((statbuf.st_mode & S_IFMT) == S_IFDIR) {
+			*pattr |= RS_ATTR_DIR;
+		}
+	}
+	
+	if (psize != NULL) {
+		*psize = statbuf.st_size;
+	}
+	
+	int fd = open(p, O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "could not open %s: %s\n", p, strerror(errno));
+		return NULL;
+	}
+	char *buf = (char *)malloc_for_templeos(statbuf.st_size+1, false, false);
+	char *rdbuf = buf;
+	int toread = statbuf.st_size;
+	
+	while(toread > 0) {
+		int n = read(fd, rdbuf, toread);
+		if (n == 0) {
+			break;
+		}
+		if (n < 0) {
+			if (errno == EAGAIN) {
+				continue;
+			}
+			fprintf(stderr, "error while reading %s: %s\n", p, strerror(errno));
+			free_for_templeos(buf);
+			return NULL;
+		}
+		
+		rdbuf += n;
+		toread -= n;
+	}
+	
+	buf[statbuf.st_size] = '\0';
+	
+	close(fd);
+	
+	return buf;
 }
 
 char *syscall_RedSeaFileRead(uint64_t cdrv, char *cur_dir, char *filename, int64_t *psize, int64_t *pattr) {
@@ -186,59 +253,20 @@ char *syscall_RedSeaFileRead(uint64_t cdrv, char *cur_dir, char *filename, int64
 		}
 	}
 	
-	char *p = fileconcat(cur_dir, filename, false);
-	char *buf = NULL;
-		
-	struct stat statbuf;
-	memset(&statbuf, 0, sizeof(struct stat));
-	if (stat(p, &statbuf) == 0) {
-		if (pattr != NULL) {
-			*pattr = 0;
-			if (extension_is(filename, ".Z")) {
-				*pattr |= RS_ATTR_COMPRESSED;
-			}
-			if ((statbuf.st_mode & S_IFMT) == S_IFDIR) {
-				*pattr |= RS_ATTR_DIR;
-			}
-		}
-		
-		if (psize != NULL) {
-			*psize = statbuf.st_size;
-		}
-		
-		int fd = open(p, O_RDONLY);
-		if (fd >= 0) {
-			buf = (char *)malloc_for_templeos(statbuf.st_size+1, false, false);
-			char *rdbuf = buf;
-			int toread = statbuf.st_size;
-			
-			while(toread > 0) {
-				int n = read(fd, rdbuf, toread);
-				if (n == 0) {
-					break;
-				}
-				if (n < 0) {
-					if (errno == EAGAIN) {
-						continue;
-					}
-					fprintf(stderr, "error while reading %s: %s\n", p, strerror(errno));
-					free_for_templeos(buf);
-					buf = NULL;
-					break;
-				}
-				
-				rdbuf += n;
-				toread -= n;
-			}
-			
-			buf[statbuf.st_size] = '\0';
-			
-			close(fd);
-		} else {
-			fprintf(stderr, "could not open %s: %s\n", p, strerror(errno));
+	if ((templeos_root != NULL) && (strlen(cur_dir) > 0) && (cur_dir[0] == '/')) {
+		char *dp = fileconcat(templeos_root, cur_dir+1, false);
+		char *p = fileconcat(dp, filename, false);
+		free(dp);
+		char *buf = fileread(p, psize, pattr);
+		free(p);
+		if (buf != NULL) {
+			enter_templeos(&t);
+			return buf;
 		}
 	}
 	
+	char *p = fileconcat(cur_dir, filename, false);
+	char *buf = fileread(p, psize, pattr);
 	free(p);
 	
 	enter_templeos(&t);

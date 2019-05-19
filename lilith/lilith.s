@@ -77,17 +77,15 @@
 	popq %rbx
 	popq %rbp
 	.endm
-
+	
 	.text
-	.globl call_templeos3_asm
-	.type call_templeos3_asm, @function
-call_templeos3_asm:
-	push_registers
-	push %rcx
-	push %rdx
+	.globl call_templeos1_asm
+	.type call_templeos1_asm, @function
+call_templeos1_asm:
+	push_registers_except_rax
 	push %rsi
 	call *%rdi
-	pop_registers
+	pop_registers_except_rax
 	ret
 
 	.text
@@ -99,6 +97,18 @@ call_templeos2_asm:
 	push %rsi
 	call *%rdi
 	pop_registers_except_rax
+	ret
+	
+	.text
+	.globl call_templeos3_asm
+	.type call_templeos3_asm, @function
+call_templeos3_asm:
+	push_registers
+	push %rcx
+	push %rdx
+	push %rsi
+	call *%rdi
+	pop_registers
 	ret
 
 	.include "syscalls.s"

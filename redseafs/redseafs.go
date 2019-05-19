@@ -280,6 +280,9 @@ func (e *dirEntry) ReadDir(intr fuse.Intr) ([]fuse.Dirent, fuse.Error) {
 			Type:  0,
 			Name:  child.name,
 		}
+		if child.attr&_RS_ATTR_DIR != 0  {
+			fdirent.Type = 4 // ???
+		}
 		if child.autoExpand {
 			fdirent.Inode = uint64(-child.clus)
 		}
