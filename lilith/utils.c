@@ -94,8 +94,13 @@ uint64_t intern_path(char *p) {
 	return e->val;
 }
 
-char *fileconcat(char *p1, char *p2) {
-	char *p = malloc(strlen(p1) + strlen(p2) + 2);
+char *fileconcat(char *p1, char *p2, bool for_templeos) {
+	char *p;
+	if (for_templeos) {
+		p = malloc_for_templeos(strlen(p1) + strlen(p2) + 2, false, false);
+	} else {
+		p = malloc(strlen(p1) + strlen(p2) + 2);
+	}
 	strcpy(p, p1);
 	if ((strlen(p) == 0) || (p[strlen(p)-1] != '/')) {
 		strcat(p, "/");

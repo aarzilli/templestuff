@@ -216,6 +216,21 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Fs->cur_dv->bd = malloc_for_templeos(sizeof(struct CBlkDev), false, true);
 	t->Fs->cur_dv->bd->bd_signature = 0x56534442;
 	t->Fs->cur_dv->bd->type = 1; // Ram disk
+	char *w = get_current_dir_name();
+	t->Fs->cur_dir = (uint8_t *)fileconcat(DRIVE_ROOT_PATH, w, true);
+	free(w);
+	
+	struct export_t *blkdev_export = hash_get(&symbols, "blkdev");
+	if (blkdev_export == NULL) {
+		fprintf(stderr, "Could not find global variable blkdev\n");
+		exit(EXIT_FAILURE);
+	}
+	struct CBlkDevGlbls *blkdev = (struct CBlkDevGlbls *)(blkdev_export->val);
+	blkdev->boot_drv_let = DRIVE_LETTER;
+	blkdev->first_hd_drv_let = DRIVE_LETTER;
+	char *homep = fileconcat(DRIVE_ROOT_PATH, getenv("HOME"), true);
+	blkdev->home_dir = (uint8_t *)homep;
+	blkdev->let_to_drv[DRIVE_LETTER - 'A'] = t->Fs->cur_dv;
 	
 	// que_init
 	t->Fs->next_except = (struct CExcept *)(&(t->Fs->next_except));
@@ -236,22 +251,6 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Fs->stk = malloc_for_templeos(sizeof(struct CTaskStk), false, true);
 	t->Fs->stk->stk_base = stk_base_estimate;
 	t->Fs->stk->stk_size = 4 * 1024 * 1024;
-	
-	struct export_t *blkdev_export = hash_get(&symbols, "blkdev");
-	if (blkdev_export == NULL) {
-		fprintf(stderr, "Could not find global variable blkdev\n");
-		exit(EXIT_FAILURE);
-	}
-	struct CBlkDevGlbls *blkdev = (struct CBlkDevGlbls *)(blkdev_export->val);
-	blkdev->boot_drv_let = DRIVE_LETTER;
-	blkdev->first_hd_drv_let = DRIVE_LETTER;
-	/*char *p;
-	asprintf(&p, "%c:%s", DRIVE_LETTER, (uint8_t *)getenv("HOME"));
-	blkdev->home_dir = (uint8_t *)p;
-	if (DEBUG_FILE_FIND) {
-		printf("root directory is %s at %p\n", p, p);
-	}*/
-	blkdev->let_to_drv[DRIVE_LETTER - 'A'] = t->Fs->cur_dv;
 	
 	struct sigaction act;
 	
@@ -559,7 +558,7 @@ int64_t redseafilefind_c_wrapper(uint64_t dv, int64_t cur_dir_clus, uint8_t *nam
 				strcpy((char *)(_res->name), builtin_files[i].name);
 				_res->size = builtin_files[i].size;
 				_res->datetime = 0;
-				_res->clus = intern_path(fileconcat(dpath, builtin_files[i].name));
+				_res->clus = intern_path(fileconcat(dpath, builtin_files[i].name, false));
 				if (DEBUG_FILE_SYSTEM) {
 					printf("\tfound (%s)\n", builtin_files[i].name);
 				}
@@ -595,7 +594,7 @@ int64_t redseafilefind_c_wrapper(uint64_t dv, int64_t cur_dir_clus, uint8_t *nam
 	
 	if ((ent != NULL) && (_res != NULL)) {
 		struct stat statbuf;
-		char *p = fileconcat(dpath, ent->d_name);
+		char *p = fileconcat(dpath, ent->d_name, false);
 		memset(&statbuf, 0, sizeof(struct stat));
 		stat(p, &statbuf);
 		
@@ -663,7 +662,7 @@ char *redseafileread_c_wrapper(uint64_t cdrv, char *cur_dir, char *filename, int
 		}
 	}
 	
-	char *p = fileconcat(cur_dir, filename);
+	char *p = fileconcat(cur_dir, filename, false);
 	char *buf = NULL;
 		
 	struct stat statbuf;

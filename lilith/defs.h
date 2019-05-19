@@ -10,7 +10,7 @@ char *strclone(char *s);
 void writestr(int fd, char *s);
 bool extension_is(char *s, char *ext);
 void signal_handler(int sig, siginfo_t *info, void *ucontext);
-char *fileconcat(char *p1, char *p2);
+char *fileconcat(char *p1, char *p2, bool for_templeos);
 
 // hash.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct hash_t {

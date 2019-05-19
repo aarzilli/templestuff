@@ -27,6 +27,7 @@
 #define IN_GDB false
 
 #define DRIVE_LETTER 'C'
+char DRIVE_ROOT_PATH[] = { DRIVE_LETTER, ':', '\0' };
 
 #include "defs.h"
 #include "static.c"
