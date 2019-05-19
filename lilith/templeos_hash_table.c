@@ -117,19 +117,19 @@ uint64_t ghidra_off(uint64_t rip, uint64_t module_base) {
 	return rip - module_base + 0x10000020;
 }
 
-void symbolicate_frame(FILE *out, struct CTask *task, uint64_t rip) {
+bool symbolicate_frame(FILE *out, struct CTask *task, uint64_t rip) {
 	struct hash_entry_t *e = hash_find_closest_entry_before(&symbols, rip);
 	if (e != NULL) {
 		if (strcmp(e->key, "SYS_KERNEL_END") != 0) {
 			fprintf(out, "\t\tat %s (0x%lx+0x%lx) ghidra=0x%lx\n", e->key, e->val->val, rip - e->val->val, ghidra_off(rip, e->val->module_base));
-			return;
+			return strcmp(e->key, "Panic") == 0;
 		}
 	}
 	
 	// couldn't find symbol or it was SYS_KERNEL_END, use templeos symbol table instead
 	
 	if (task == NULL) {
-		return;
+		return false;
 	}
 	
 	struct CHashExport *bestfn = NULL;
@@ -175,6 +175,8 @@ void symbolicate_frame(FILE *out, struct CTask *task, uint64_t rip) {
 	if (bestfn != NULL) {
 		fprintf(out, "\t\tat %s!%s (0x%lx+0x%lx) module_base=0x%lx ghidra=0x%lx\n", module_name, bestfn->super.super.str, bestfn->val, rip - bestfn->val, module_base, ghidra_off(rip, module_base));
 	}
+	
+	return false;
 }
 
 void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp) {
@@ -187,7 +189,8 @@ void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp
 			break;
 		}
 		
-		symbolicate_frame(out, task, rip);
+		bool ispanic = symbolicate_frame(out, task, rip);
+		
 		
 		rip = *((uint64_t *)(rbp+0x8));
 		
@@ -197,6 +200,9 @@ void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp
 				fprintf(out, " %lx", *((uint64_t *)(rbp+0x8*(i+1))));
 			}
 			fprintf(out, "\n");
+			if (ispanic && (count == 0)) {
+				fprintf(out, "\t\t\tPanic Message = [%s]\n", *((char **)(rbp+0x10)));
+			}
 		}
 		
 		rbp = *((uint64_t *)rbp);

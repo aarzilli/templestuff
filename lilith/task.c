@@ -507,7 +507,12 @@ void trampoline_kernel_patch(char *name, void dest(void)) {
 void putchar_c_wrapper(uint64_t c) {
 	struct templeos_thread t;
 	exit_templeos(&t);
-	putchar(c);
+	if (c != '\r') {
+		putchar(c);
+	} else {
+		putchar('\\');
+		putchar('r');
+	}
 	enter_templeos(&t);
 }
 
@@ -680,7 +685,7 @@ char *redseafileread_c_wrapper(uint64_t cdrv, char *cur_dir, char *filename, int
 		
 		int fd = open(p, O_RDONLY);
 		if (fd >= 0) {
-			buf = (char *)malloc_for_templeos(statbuf.st_size, false, false);
+			buf = (char *)malloc_for_templeos(statbuf.st_size+1, false, false);
 			char *rdbuf = buf;
 			int toread = statbuf.st_size;
 			
@@ -702,6 +707,8 @@ char *redseafileread_c_wrapper(uint64_t cdrv, char *cur_dir, char *filename, int
 				rdbuf += n;
 				toread -= n;
 			}
+			
+			buf[statbuf.st_size] = '\0';
 			
 			close(fd);
 		} else {
@@ -794,4 +801,17 @@ void templeos_free_c_wrapper(void *p) {
 	enter_templeos(&t);
 }
 
-
+uint64_t systimerread_c_wrapper(void) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	
+	struct timespec tv;
+	clock_gettime(CLOCK_MONOTONIC, &tv);
+	
+	uint64_t r = tv.tv_nsec / 832;
+	r += tv.tv_sec * 1201471;
+	
+	enter_templeos(&t);
+	
+	return r;
+}

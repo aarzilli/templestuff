@@ -17,6 +17,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <time.h>
 
 #define DEBUG false
 #define DEBUG_LOAD_PASS1 false

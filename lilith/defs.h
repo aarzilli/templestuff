@@ -128,6 +128,7 @@ extern void templeos_malloc_asm_wrapper(void);
 extern void templeos_free_asm_wrapper(void);
 extern void redseafilefind_asm_wrapper(void);
 extern void redseafileread_asm_wrapper(void);
+extern void systimerread_asm_wrapper(void);
 
 // static.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 

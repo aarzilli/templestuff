@@ -175,4 +175,13 @@ redseafileread_asm_wrapper:
 	call redseafileread_c_wrapper
 	pop_registers_except_rax
 	ret $0x28
-	
+
+	.text
+	.globl systimerread_asm_wrapper
+	.type systimerread_asm_wrapper, @function
+systimerread_asm_wrapper:
+	push_registers_except_rax
+	call systimerread_c_wrapper
+	pop_registers_except_rax
+	ret
+

@@ -337,6 +337,7 @@ void load_kernel(void) {
 	trampoline_kernel_patch("JobsHndlr", &jobshdnlr_asm_wrapper);
 	trampoline_kernel_patch("RedSeaFileFind", &redseafilefind_asm_wrapper);
 	trampoline_kernel_patch("RedSeaFileRead", &redseafileread_asm_wrapper);
+	trampoline_kernel_patch("SysTimerRead", &systimerread_asm_wrapper);
 	
 	// the kernel needs to know where it's loaded, the 16bit startup code would do this
 	kernel_patch_var64("mem_boot_base", (uint64_t)module_base);
