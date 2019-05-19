@@ -119,17 +119,6 @@ void print_templeos_hash_table(FILE *out, struct CTask *task);
 
 void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp);
 
-// lilith.s //////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-extern void putchar_asm_wrapper(void);
-extern void drvlock_asm_wrapper(void);
-extern void jobshdnlr_asm_wrapper(void);
-extern void templeos_malloc_asm_wrapper(void);
-extern void templeos_free_asm_wrapper(void);
-extern void redseafilefind_asm_wrapper(void);
-extern void redseafileread_asm_wrapper(void);
-extern void systimerread_asm_wrapper(void);
-
 // static.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct builtin_file {
@@ -139,5 +128,9 @@ struct builtin_file {
 };
 extern uint8_t kernel_bin_c[];
 extern struct builtin_file builtin_files[];
+
+// syscall_tramp.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void setup_syscall_trampolines(void);
 
 #endif

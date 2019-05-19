@@ -329,15 +329,7 @@ void load_kernel(void) {
 	kernel_patch_instruction("ScanMsg", 0x3d, 0xfa, 0x90);
 	kernel_patch_instruction("JobsHndlr", 0x2b, 0xfa, 0x90);
 	
-	// Patch some kernel functions with our own stuff
-	trampoline_kernel_patch("_MALLOC", &templeos_malloc_asm_wrapper);
-	trampoline_kernel_patch("_FREE", &templeos_free_asm_wrapper);
-	trampoline_kernel_patch("RawPutChar", &putchar_asm_wrapper);
-	trampoline_kernel_patch("DrvLock", &drvlock_asm_wrapper);
-	trampoline_kernel_patch("JobsHndlr", &jobshdnlr_asm_wrapper);
-	trampoline_kernel_patch("RedSeaFileFind", &redseafilefind_asm_wrapper);
-	trampoline_kernel_patch("RedSeaFileRead", &redseafileread_asm_wrapper);
-	trampoline_kernel_patch("SysTimerRead", &systimerread_asm_wrapper);
+	setup_syscall_trampolines();
 	
 	// the kernel needs to know where it's loaded, the 16bit startup code would do this
 	kernel_patch_var64("mem_boot_base", (uint64_t)module_base);

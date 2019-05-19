@@ -30,11 +30,14 @@
 char DRIVE_ROOT_PATH[] = { DRIVE_LETTER, ':', '\0' };
 
 #include "defs.h"
+#include "syscalls.h"
 #include "static.c"
 #include "utils.c"
 #include "load.c"
 #include "hash.c"
 #include "task.c"
+#include "syscalls.c"
+#include "syscalls_tramp.c"
 #include "templeos_hash_table.c"
 
 int main(int argc, char *argv[]) {
