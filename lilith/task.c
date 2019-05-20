@@ -537,7 +537,12 @@ void *malloc_for_templeos(uint64_t size, bool executable, bool zero) {
 	if (zero) {
 		memset(p, 0, size);
 	}
-	register_templeos_memory(p, size, is_mmapped);
+	if (p == 0) {
+		return p;
+	}
+	if (is_mmapped || DEBUG_REGISTER_ALL_ALLOCATIONS) {
+		register_templeos_memory(p, size, is_mmapped);
+	}
 	return p;
 }
 
@@ -547,7 +552,12 @@ void free_for_templeos(void *p) {
 	if (p == NULL) {
 		return;
 	}
-	struct templeos_mem_entry_t *e = get_templeos_memory((uint64_t)p);
+	
+	struct templeos_mem_entry_t *e = NULL;
+	
+	if (DEBUG_REGISTER_ALL_ALLOCATIONS || (((uint64_t)p) < 0x100000000)) {
+		e = get_templeos_memory((uint64_t)p);
+	}
 	
 	if (DEBUG_ALLOC) {
 		printf("Freeing %p (%p)", p, e);
@@ -561,18 +571,29 @@ void free_for_templeos(void *p) {
 		//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
 	}
 	
-	if (e == NULL) {
+	if ((e == NULL) && DEBUG_REGISTER_ALL_ALLOCATIONS) {
 		printf("trying to free unknown memory %p\n", p);
 		fflush(stdout);
 		_exit(0);
 	}
 	
-	if (e->is_mmapped) {
-		munmap(p, e->sz);
-	} else {
-		free(e->mem);
+	if (DEBUG_REGISTER_ALL_ALLOCATIONS) {
+		if (e->mem != p) {
+			printf("mismatched free\n");
+			fflush(stdout);
+			_exit(0);
+		}
 	}
 	
-	unregister_templeos_memory((uint64_t)p);
+	if (e != NULL) {
+		if (e->is_mmapped) {
+			munmap(e->mem, e->sz);
+		} else {
+			free(e->mem);
+		}
+		unregister_templeos_memory((uint64_t)p);
+	} else {
+		free(p);
+	}
 }
 
