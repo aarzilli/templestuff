@@ -83,3 +83,21 @@ asm_syscall_SysTimerRead:
 	pop_registers_except_rax
 	ret
 
+	.text
+	.globl asm_syscall_Snd
+	.type asm_syscall_Snd, @function
+asm_syscall_Snd:
+	// don't do anything
+	movq $0, %rax
+	ret $0x8
+
+	.text
+	.globl asm_syscall_MHeapCtrl
+	.type asm_syscall_MHeapCtrl, @function
+asm_syscall_MHeapCtrl:
+	push_registers_except_rax
+	movq 0x10(%rbp), %rdi
+	call syscall_MHeapCtrl
+	pop_registers_except_rax
+	ret $0x8
+

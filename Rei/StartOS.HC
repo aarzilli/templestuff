@@ -15,7 +15,7 @@ Option(OPTf_WARN_PAREN,ON);
 Option(OPTf_WARN_DUP_TYPES,ON);
 HashTablePurge(adam_task->hash_table);
 
-#include "/Adam/MakeAdam"
+#include "MakeAdam"
 
 //Dbg("Type 'G;'");
 DocTermNew;

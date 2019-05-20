@@ -307,15 +307,16 @@ U0 MusicSettingsRst()
   music.meter_top=4;
   music.meter_bottom=4;
   SndRst;
-  PUSHFD
-  CLI
+  //PUSHFD
+  //CLI
   if (mp_cnt>1)
-    while (LBts(&sys_semas[SEMA_TMBEAT],0))
-      PAUSE
+    while (LBts(&sys_semas[SEMA_TMBEAT],0)) {
+      //PAUSE
+    }
   music.last_tM=tM;
   music.last_Beat=0.0;
   LBtr(&sys_semas[SEMA_TMBEAT],0);
-  POPFD
+  //POPFD
 }
 
 MusicSettingsRst;

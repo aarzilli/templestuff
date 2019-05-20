@@ -12,7 +12,7 @@ Cd(__DIR__);;
 #include "Win"
 #include "WinMgr"
 #include "ADbg"
-#include "::/Adam/God/GodExt"
+#include "God/GodExt"
 #include "DolDoc/MakeDoc"
 LBts(&sys_run_level,RLf_DOC);
 #include "Ctrls/MakeCtrls"

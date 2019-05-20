@@ -199,6 +199,9 @@ int arch_prctl(int code, unsigned long addr) {
 #define TASK_HASH_TABLE_SIZE	(1<<10)
 #define TMP_FILE_NAME "~/Tmp.DD.Z"
 
+#define DATA_HEAP_FAKE_POINTER 0x1
+#define CODE_HEAP_FAKE_POINTER 0x2
+
 void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Gs = (struct CCPU *)calloc(1, sizeof(struct CCPU));
 	t->Gs->addr = t->Gs;
@@ -207,8 +210,8 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Fs->gs = t->Gs;
 	t->Fs->task_signature = 0x536b7354; //TskS
 	
-	t->Fs->data_heap = 0x1;
-	t->Fs->code_heap = 0x2;
+	t->Fs->data_heap = DATA_HEAP_FAKE_POINTER;
+	t->Fs->code_heap = CODE_HEAP_FAKE_POINTER;
 	
 	t->Fs->cur_dv = malloc_for_templeos(sizeof(struct CDrv), false, true);
 	t->Fs->cur_dv->dv_signature = 0x56535644;
@@ -554,7 +557,6 @@ void free_for_templeos(void *p) {
 	}
 	
 	struct templeos_mem_entry_t *e = NULL;
-	
 	if (DEBUG_REGISTER_ALL_ALLOCATIONS || (((uint64_t)p) < 0x100000000)) {
 		e = get_templeos_memory((uint64_t)p);
 	}

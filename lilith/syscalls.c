@@ -17,7 +17,7 @@ void *syscall_MAlloc(uint64_t size, uint64_t mem_task) { // _MALLOC
 	struct templeos_thread t;
 	exit_templeos(&t);
 	
-	void *p = malloc_for_templeos(size, mem_task == 0x02, false);
+	void *p = malloc_for_templeos(size, mem_task == CODE_HEAP_FAKE_POINTER, false);
 	
 	if (DEBUG_ALLOC) {
 		printf("Allocated %p to %p (%lx)\n", p, p+size, size);
@@ -285,5 +285,29 @@ uint64_t syscall_SysTimerRead(void) {
 	
 	enter_templeos(&t);
 	
+	return r;
+}
+
+//uint64_t syscall_Snd(int8_t); NOP
+
+uint64_t syscall_MHeapCtrl(uint8_t *p) { // _MHEAP_CTRL
+	struct templeos_thread t;
+	exit_templeos(&t);
+	
+	struct templeos_mem_entry_t *e = NULL;
+	if (DEBUG_REGISTER_ALL_ALLOCATIONS || (((uint64_t)p) < 0x100000000)) {
+		e = get_templeos_memory((uint64_t)p);
+	}
+	
+	uint64_t r;
+	if ((e != NULL) && e->is_mmapped) {
+		r = CODE_HEAP_FAKE_POINTER;
+	} else {
+		r = DATA_HEAP_FAKE_POINTER;
+	}
+	
+	// return heap ctrl for this location?
+	
+	enter_templeos(&t);
 	return r;
 }
