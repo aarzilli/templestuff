@@ -71,11 +71,15 @@ void print_templeos_hash_table(FILE *out, struct CTask *task) {
 		}
 		
 		fprintf(out, "\t\tnext %p\n", he->next);
-		if (is_templeos_memory((uint64_t)(he->str))) {
-			fprintf(out, "\t\tstr %p [%s]\n", he->str, he->str);
+		if (DEBUG_REGISTER_ALL_ALLOCATIONS) {
+			if (is_templeos_memory((uint64_t)(he->str))) {
+				fprintf(out, "\t\tstr %p [%s]\n", he->str, he->str);
+			} else {
+				fprintf(out, "\t\tstr %p\n", he->str);
+				early_exit = PRINT_HASH_TABLE_EARLY_EXIT;
+			}
 		} else {
-			fprintf(out, "\t\tstr %p\n", he->str);
-			early_exit = PRINT_HASH_TABLE_EARLY_EXIT;
+			fprintf(out, "\t\tstr %p [%s]\n", he->str, he->str);
 		}
 		fprintf(out, "\t\ttype 0x%x\n", he->type);
 		fprintf(out, "\t\tuse_cnt %d\n", he->use_cnt);
@@ -93,10 +97,33 @@ void print_templeos_hash_table(FILE *out, struct CTask *task) {
 			fprintf(out, "\t\tuser_data0 0x%lx\n", mod->user_data0);
 			fprintf(out, "\t\tuser_data1 0x%lx\n", mod->user_data1);
 			fprintf(out, "\t\tuser_data2 0x%lx\n", mod->user_data2);
+		} else if ((he->type & HTT_FUN) != 0) {
+			struct CHashFun *fn = (struct CHashFun *)he;
+			fprintf(out, "\t\tsrc_link %p\n", fn->super.super.src_link);
+			fprintf(out, "\t\tidx %p\n", fn->super.super.idx);
+			fprintf(out, "\t\tdbg_info %p\n", fn->super.super.dbg_info);
+			fprintf(out, "\t\timport_name %p\n", fn->super.super.import_name);
+			fprintf(out, "\t\tie_lst %p\n", fn->super.super.ie_lst);
+			fprintf(out, "\t\tsize %lx\n", fn->super.size);
+			fprintf(out, "\t\tneg_offset %lx\n", fn->super.neg_offset);
+			fprintf(out, "\t\tmember_cnt %x\n", fn->super.member_cnt);
+			fprintf(out, "\t\tflags %x\n", fn->super.flags);
+			fprintf(out, "\t\tmember_lst_and_root %p\n", fn->super.member_lst_and_root);
+			fprintf(out, "\t\tmember_class_base_root %p\n", fn->super.member_class_base_root);
+			fprintf(out, "\t\tlast_in_member_lst %p\n", fn->super.last_in_member_lst);
+			fprintf(out, "\t\tbase_class %p\n", fn->super.base_class);
+			fprintf(out, "\t\tfwd_class %p\n", fn->super.fwd_class);
+			fprintf(out, "\t\treturn_class %p\n", fn->return_class);
+			fprintf(out, "\t\targ_cnt %x\n", fn->arg_cnt);
+			fprintf(out, "\t\tpad %x\n", fn->pad);
+			fprintf(out, "\t\tused_reg_mask %x\n", fn->used_reg_mask);
+			fprintf(out, "\t\tclobbered_reg_mask %x\n", fn->clobbered_reg_mask);
+			fprintf(out, "\t\texe_addr %p\n", fn->exe_addr);
+			fprintf(out, "\t\text_lst %p\n", fn->ext_lst);
 		}
 		
 		fprintf(out, "\n");
-		if ((he->next != NULL) && !is_templeos_memory((uint64_t)(he->next))) {
+		if ((he->next != NULL) && DEBUG_REGISTER_ALL_ALLOCATIONS && !is_templeos_memory((uint64_t)(he->next))) {
 			fprintf(out, "\t\t(out of templeos memory)\n\n");
 			it.he = NULL;
 		}
@@ -132,22 +159,25 @@ bool symbolicate_frame(FILE *out, struct CTask *task, uint64_t rip) {
 		return false;
 	}
 	
-	struct CHashExport *bestfn = NULL;
+	char *bestfn_name = NULL;
+	uint64_t bestfn_val = 0;
+	bool bestfn_isfn = false;
 	struct CHashGeneric *bestmod = NULL;
 	
 	for (struct thiter it = thiter_new(task); thiter_valid(&it); thiter_next(&it)) {
+		char *curfn_name = NULL;
+		uint64_t curfn_val = 0;
+		bool curfn_isfn = false;
 		if (is_hash_type(it.he, HTT_EXPORT_SYS_SYM|HTF_IMM)) {
 			struct CHashExport *ex = (struct CHashExport *)(it.he);
-			if (ex->val > rip) {
-				continue;
-			}
-			if (bestfn == NULL) {
-				bestfn = ex;
-			} else {
-				if (rip - ex->val < rip - bestfn->val) {
-					bestfn = ex;
-				}
-			}
+			curfn_name = (char *)(ex->super.super.str);
+			curfn_val = ex->val;
+			curfn_isfn = false;
+		} else if (is_hash_type(it.he, HTT_FUN)) {
+			struct CHashFun *fn = (struct CHashFun *)(it.he);
+			curfn_name = (char *)(fn->super.super.super.str);
+			curfn_val = (uint64_t)(fn->exe_addr);
+			curfn_isfn = true;
 		} else if (is_hash_type(it.he, HTT_MODULE|HTF_PUBLIC)) {
 			struct CHashGeneric *mod = (struct CHashGeneric *)(it.he);
 			if (mod->user_data0 > rip) {
@@ -160,20 +190,36 @@ bool symbolicate_frame(FILE *out, struct CTask *task, uint64_t rip) {
 					bestmod = mod;
 				}
 			}
-			
+		}
+		
+		if (curfn_name != NULL) {
+			if (curfn_val > rip) {
+				continue;
+			}
+			if (bestfn_name == NULL) {
+				bestfn_name = curfn_name;
+				bestfn_val = curfn_val;
+				bestfn_isfn = curfn_isfn;
+			} else {
+				if (rip - curfn_val < rip - bestfn_val) {
+					bestfn_name = curfn_name;
+					bestfn_val = curfn_val;
+					bestfn_isfn = curfn_isfn;
+				}
+			}
 		}
 	}
 	
 	uint64_t module_base = 0;
 	char *module_name = "unknown";
 	
-	if (bestmod != NULL) {
+	if ((bestmod != NULL) && !bestfn_isfn) {
 		module_base = bestmod->user_data0 + 0x20; // user_data0 is the header address
 		module_name = (char *)(bestmod->super.str);
 	}
 	
-	if (bestfn != NULL) {
-		fprintf(out, "\t\tat %s!%s (0x%lx+0x%lx) module_base=0x%lx ghidra=0x%lx\n", module_name, bestfn->super.super.str, bestfn->val, rip - bestfn->val, module_base, ghidra_off(rip, module_base));
+	if (bestfn_name != NULL) {
+		fprintf(out, "\t\tat %s!%s (0x%lx+0x%lx) module_base=0x%lx ghidra=0x%lx\n", module_name, bestfn_name, bestfn_val, rip - bestfn_val, module_base, ghidra_off(rip, module_base));
 	}
 	
 	return false;

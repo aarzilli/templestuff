@@ -100,6 +100,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	call_templeos(&t, "LoadKernel");
+	kernel_patch_var64("adam_task", (uint64_t)(t.Fs));
 	
 	if (DEBUG) {
 		printf("Initialization Done\n");

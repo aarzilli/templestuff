@@ -29,6 +29,7 @@
 // LDF_KERNEL implies LDF_JUST_LOAD, disables unresolved symbol errors (they will be ignored)
 #define LDF_KERNEL            0x10000
 
+#define HTT_FUN			0x00040 //CHashFun
 #define HTT_MODULE		0x04000 //CHashGeneric
 #define HTT_EXPORT_SYS_SYM      0x00001 //CHashExport
 
@@ -328,6 +329,8 @@ void load_kernel(void) {
 	kernel_patch_instruction("Panic", 0x16, 0xfa, 0x90);
 	kernel_patch_instruction("ScanMsg", 0x3d, 0xfa, 0x90);
 	kernel_patch_instruction("JobsHndlr", 0x2b, 0xfa, 0x90);
+	kernel_patch_instruction("HashTablePurge", 0x26, 0xfa, 0x90);
+	kernel_patch_instruction("_HASH_REM_DEL", 0x2c, 0xfa, 0x90);
 	
 	setup_syscall_trampolines();
 	

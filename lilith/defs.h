@@ -69,38 +69,11 @@ bool is_templeos_memory(uint64_t p);
 void trampoline_kernel_patch(char *name, void dest(void));
 void kernel_patch_var64(char *name, uint64_t val);
 
+void *find_entry_point(struct templeos_thread *t, char *name);
+
 // templeos_hash_table.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct CHashTable {
-  struct CHashTable *next;
-  int64_t   mask,locked_flags;
-  struct CHash **body;
-};
-
-struct CHash {
-  struct CHash	*next;
-  uint8_t	*str;
-  uint32_t	type,
-	use_cnt; 
-};
-
-struct CHashSrcSym {
-	struct CHash super;
-	uint8_t	*src_link, *idx;
-	struct CDbgInfo *dbg_info;
-	uint8_t	*import_name;
-	struct CAOTImportExport *ie_lst;
-};
-
-struct CHashExport {
-	struct CHashSrcSym super;
-	int64_t	val;
-};
-
-struct CHashGeneric {
-	struct CHash super;
-	int64_t user_data0, user_data1, user_data2;
-};
+#include "templeos_defs.h"
 
 struct thiter {
 	struct CHashTable *h;

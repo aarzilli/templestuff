@@ -71,6 +71,9 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 	fprintf(stderr, "\tR14 %016llx\n", ucontext->uc_mcontext.gregs[REG_R14]);
 	fprintf(stderr, "\tR15 %016llx\n", ucontext->uc_mcontext.gregs[REG_R15]);
 	
+	void *uf_entry = find_entry_point(&t, "Uf");
+	fprintf(stderr, "\nUf entry point %p\n", uf_entry);
+	
 	if (DEBUG_PRINT_TEMPLEOS_SYMBOL_TABLE_ON_SIGNAL) {
 		fprintf(stderr, "\nPrint system hash table:\n");
 		print_templeos_hash_table(stderr, t.Fs);
