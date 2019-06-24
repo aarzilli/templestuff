@@ -14,9 +14,7 @@ Cd(__DIR__);;
 #include "WinMgr"
 #include "God/GodExt"
 #include "DolDoc/MakeDoc"
-"here 0\n";
 LBts(&sys_run_level,RLf_DOC);
-"here\n";
 #include "Ctrls/MakeCtrls"
 #include "InFile"
 #include "ARegistry"

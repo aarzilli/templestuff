@@ -30,7 +30,6 @@ const syscallPrefix = "syscall_"
 const syscallPtrPrefix = "*syscall_"
 
 func main() {
-	//TODO: generate syscalls.s, syscalls.h, syscalls_tramp.c by reading syscalls.c
 	fh, err := os.Open("syscalls.c")
 	must(err)
 	defer fh.Close()

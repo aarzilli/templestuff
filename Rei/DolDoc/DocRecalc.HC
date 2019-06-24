@@ -313,7 +313,7 @@ public Bool DocRecalc(CDoc *doc,I64 recalc_flags=RECALCt_NORMAL)
   }
 
   PUSHFD
-  CLI
+  //CLI
   left	=win_task->win_left;
   right =win_task->win_right;
   width =win_task->win_width;
