@@ -30,6 +30,9 @@
 #define DRIVE_LETTER 'C'
 char DRIVE_ROOT_PATH[] = { DRIVE_LETTER, ':', '\0' };
 
+// tracks EXT_EXTS_NUM defined in KernelA.HH
+#define EXT_EXTS_NUM 5
+
 char *templeos_root = NULL;
 
 #include "defs.h"
@@ -73,6 +76,7 @@ int main(int argc, char *argv[]) {
 	
 	{ // SysGlblsInit
 		call_templeos1(&t, "DbgMode", 1);
+		kernel_patch_var64("ext", (uint64_t)(malloc_for_templeos(EXT_EXTS_NUM * sizeof(uint8_t *), false, true)));
 		call_templeos(&t, "KeyDevInit");
 		
 		uint8_t *rev_bits_table = malloc_for_templeos(256, false, true);

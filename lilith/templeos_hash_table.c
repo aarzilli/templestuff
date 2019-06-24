@@ -161,23 +161,19 @@ bool symbolicate_frame(FILE *out, struct CTask *task, uint64_t rip) {
 	
 	char *bestfn_name = NULL;
 	uint64_t bestfn_val = 0;
-	bool bestfn_isfn = false;
 	struct CHashGeneric *bestmod = NULL;
 	
 	for (struct thiter it = thiter_new(task); thiter_valid(&it); thiter_next(&it)) {
 		char *curfn_name = NULL;
 		uint64_t curfn_val = 0;
-		bool curfn_isfn = false;
 		if (is_hash_type(it.he, HTT_EXPORT_SYS_SYM|HTF_IMM)) {
 			struct CHashExport *ex = (struct CHashExport *)(it.he);
 			curfn_name = (char *)(ex->super.super.str);
 			curfn_val = ex->val;
-			curfn_isfn = false;
 		} else if (is_hash_type(it.he, HTT_FUN)) {
 			struct CHashFun *fn = (struct CHashFun *)(it.he);
 			curfn_name = (char *)(fn->super.super.super.str);
 			curfn_val = (uint64_t)(fn->exe_addr);
-			curfn_isfn = true;
 		} else if (is_hash_type(it.he, HTT_MODULE|HTF_PUBLIC)) {
 			struct CHashGeneric *mod = (struct CHashGeneric *)(it.he);
 			if (mod->user_data0 > rip) {
@@ -199,12 +195,10 @@ bool symbolicate_frame(FILE *out, struct CTask *task, uint64_t rip) {
 			if (bestfn_name == NULL) {
 				bestfn_name = curfn_name;
 				bestfn_val = curfn_val;
-				bestfn_isfn = curfn_isfn;
 			} else {
 				if (rip - curfn_val < rip - bestfn_val) {
 					bestfn_name = curfn_name;
 					bestfn_val = curfn_val;
-					bestfn_isfn = curfn_isfn;
 				}
 			}
 		}
@@ -213,7 +207,7 @@ bool symbolicate_frame(FILE *out, struct CTask *task, uint64_t rip) {
 	uint64_t module_base = 0;
 	char *module_name = "unknown";
 	
-	if ((bestmod != NULL) && !bestfn_isfn) {
+	if (bestmod != NULL) {
 		module_base = bestmod->user_data0 + 0x20; // user_data0 is the header address
 		module_name = (char *)(bestmod->super.str);
 	}

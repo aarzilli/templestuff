@@ -425,15 +425,20 @@ void *find_entry_point(struct templeos_thread *t, char *name) {
 	}
 	
 	for (struct thiter it = thiter_new(t->Fs); thiter_valid(&it); thiter_next(&it)) {
-		if (!is_hash_type(it.he, HTT_EXPORT_SYS_SYM|HTF_IMM)) {
-			continue;
-		}
-		if (strcmp((char *)(it.he->str), name) != 0) {
-			continue;
+		if (is_hash_type(it.he, HTT_EXPORT_SYS_SYM|HTF_IMM)) {
+			if (strcmp((char *)(it.he->str), name) != 0) {
+				continue;
+			}
+			struct CHashExport *ex = (struct CHashExport *)(it.he);
+			return (void *)(ex->val);
+		} else if (is_hash_type(it.he, HTT_FUN)) {
+			if (strcmp((char *)(it.he->str), name) != 0) {
+				continue;
+			}
+			struct CHashFun *fn = (struct CHashFun *)(it.he);
+			return (void *)(fn->exe_addr);
 		}
 		
-		struct CHashExport *ex = (struct CHashExport *)(it.he);
-		return (void *)(ex->val);
 	}
 	return NULL;
 }

@@ -9,12 +9,14 @@ Cd(__DIR__);;
 #include "ASnd"
 #include "ABlkDev/MakeABlkDev"
 #include "Menu"
+#include "ADbg"
 #include "Win"
 #include "WinMgr"
-#include "ADbg"
 #include "God/GodExt"
 #include "DolDoc/MakeDoc"
+"here 0\n";
 LBts(&sys_run_level,RLf_DOC);
+"here\n";
 #include "Ctrls/MakeCtrls"
 #include "InFile"
 #include "ARegistry"
