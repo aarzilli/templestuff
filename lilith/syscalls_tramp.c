@@ -10,6 +10,7 @@ extern void asm_syscall_RedSeaFilesFind(void);
 extern void asm_syscall_SysTimerRead(void);
 extern void asm_syscall_Snd(void);
 extern void asm_syscall_MHeapCtrl(void);
+extern void asm_syscall_NowDateTimeStruct(void);
 void setup_syscall_trampolines(void) {
 	trampoline_kernel_patch("RawPutChar", &asm_syscall_RawPutChar);
 	trampoline_kernel_patch("DrvLock", &asm_syscall_DrvLock);
@@ -22,4 +23,5 @@ void setup_syscall_trampolines(void) {
 	trampoline_kernel_patch("SysTimerRead", &asm_syscall_SysTimerRead);
 	trampoline_kernel_patch("Snd", &asm_syscall_Snd);
 	trampoline_kernel_patch("_MHEAP_CTRL", &asm_syscall_MHeapCtrl);
+	trampoline_kernel_patch("NowDateTimeStruct", &asm_syscall_NowDateTimeStruct);
 }

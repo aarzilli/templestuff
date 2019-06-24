@@ -456,8 +456,6 @@ uint64_t syscall_RedSeaFilesFind(char *files_find_mask, int64_t fuf_flags, struc
 	struct templeos_thread t;
 	exit_templeos(&t);
 	
-	printf("RedSeaFilesFind called on %s\n", t.Fs->cur_dir);
-	
 	if (strcmp((char *)(t.Fs->cur_dir), "/") == 0) {
 		if ((fuf_flags & FUF_JUST_DIRS) == 0){
 			for (int i = 0; i < NUM_BUILTIN_FILES; ++i) {
@@ -540,4 +538,34 @@ uint64_t syscall_MHeapCtrl(uint8_t *p) { // _MHEAP_CTRL
 	
 	enter_templeos(&t);
 	return r;
+}
+
+struct CDateStruct
+{
+  uint8_t	sec10000,sec100,sec,min,hour,
+	day_of_week,day_of_mon,mon;
+  int32_t	year;
+};
+
+void syscall_NowDateTimeStruct(struct CDateStruct *_ds) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	
+	memset(_ds, 0, sizeof(struct CDateStruct));
+	
+	struct tm tm;
+	memset(&tm, 0, sizeof(struct tm));
+	
+	time_t now = time(NULL);
+	localtime_r(&now, &tm);
+	
+	_ds->year = tm.tm_year + 1900;
+	_ds->mon = tm.tm_mon + 1;
+	_ds->day_of_mon = tm.tm_mday;
+	_ds->day_of_week = tm.tm_wday;
+	_ds->hour = tm.tm_hour;
+	_ds->min = tm.tm_min;
+	_ds->sec = tm.tm_sec;
+	
+	enter_templeos(&t);
 }

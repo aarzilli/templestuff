@@ -113,3 +113,13 @@ asm_syscall_MHeapCtrl:
 	pop_registers_except_rax
 	ret $0x8
 
+	.text
+	.globl asm_syscall_NowDateTimeStruct
+	.type asm_syscall_NowDateTimeStruct, @function
+asm_syscall_NowDateTimeStruct:
+	push_registers
+	movq 0x10(%rbp), %rdi
+	call syscall_NowDateTimeStruct
+	pop_registers
+	ret $0x8
+
