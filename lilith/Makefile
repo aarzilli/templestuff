@@ -15,4 +15,3 @@ generate_static:
 syscalls.s: syscalls.c
 	go run scripts/syscall_generate.go
 
-	

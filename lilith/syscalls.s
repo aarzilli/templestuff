@@ -75,6 +75,18 @@ asm_syscall_RedSeaFileRead:
 	ret $0x28
 
 	.text
+	.globl asm_syscall_RedSeaFilesFind
+	.type asm_syscall_RedSeaFilesFind, @function
+asm_syscall_RedSeaFilesFind:
+	push_registers_except_rax
+	movq 0x10(%rbp), %rdi
+	movq 0x18(%rbp), %rsi
+	movq 0x20(%rbp), %rdx
+	call syscall_RedSeaFilesFind
+	pop_registers_except_rax
+	ret $0x18
+
+	.text
 	.globl asm_syscall_SysTimerRead
 	.type asm_syscall_SysTimerRead, @function
 asm_syscall_SysTimerRead:
