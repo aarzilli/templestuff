@@ -123,3 +123,15 @@ asm_syscall_NowDateTimeStruct:
 	pop_registers
 	ret $0x8
 
+	.text
+	.globl asm_syscall_GetS
+	.type asm_syscall_GetS, @function
+asm_syscall_GetS:
+	push_registers_except_rax
+	movq 0x10(%rbp), %rdi
+	movq 0x18(%rbp), %rsi
+	movq 0x20(%rbp), %rdx
+	call syscall_GetS
+	pop_registers_except_rax
+	ret $0x18
+

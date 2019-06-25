@@ -456,6 +456,8 @@ uint64_t syscall_RedSeaFilesFind(char *files_find_mask, int64_t fuf_flags, struc
 	struct templeos_thread t;
 	exit_templeos(&t);
 	
+	printf("RedSeaFilesFind %s %s\n", (char *)(t.Fs->cur_dir), files_find_mask);
+	
 	if (strcmp((char *)(t.Fs->cur_dir), "/") == 0) {
 		if ((fuf_flags & FUF_JUST_DIRS) == 0){
 			for (int i = 0; i < NUM_BUILTIN_FILES; ++i) {
@@ -568,4 +570,20 @@ void syscall_NowDateTimeStruct(struct CDateStruct *_ds) {
 	_ds->sec = tm.tm_sec;
 	
 	enter_templeos(&t);
+}
+
+uint64_t syscall_GetS(char *buf, int64_t size, uint8_t allow_ext) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	
+	char *r = fgets(buf, size, stdin);
+	if (r == NULL) {
+		buf[0] = 0;
+	}
+	if (!allow_ext && (strlen(buf) > 0) && (buf[strlen(buf)-1] == '\n')) {
+		buf[strlen(buf)-1] = 0;
+	}
+	
+	enter_templeos(&t);
+	return strlen((char *)buf);
 }

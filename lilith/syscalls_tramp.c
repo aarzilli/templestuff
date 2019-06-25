@@ -11,6 +11,7 @@ extern void asm_syscall_SysTimerRead(void);
 extern void asm_syscall_Snd(void);
 extern void asm_syscall_MHeapCtrl(void);
 extern void asm_syscall_NowDateTimeStruct(void);
+extern void asm_syscall_GetS(void);
 void setup_syscall_trampolines(void) {
 	trampoline_kernel_patch("RawPutChar", &asm_syscall_RawPutChar);
 	trampoline_kernel_patch("DrvLock", &asm_syscall_DrvLock);
@@ -24,4 +25,5 @@ void setup_syscall_trampolines(void) {
 	trampoline_kernel_patch("Snd", &asm_syscall_Snd);
 	trampoline_kernel_patch("_MHEAP_CTRL", &asm_syscall_MHeapCtrl);
 	trampoline_kernel_patch("NowDateTimeStruct", &asm_syscall_NowDateTimeStruct);
+	trampoline_kernel_patch("GetS", &asm_syscall_GetS);
 }

@@ -67,6 +67,7 @@ struct templeos_mem_entry_t *get_templeos_memory(uint64_t p);
 bool is_templeos_memory(uint64_t p);
 
 void trampoline_kernel_patch(char *name, void dest(void));
+void kernel_patch_var32(char *name, uint32_t val);
 void kernel_patch_var64(char *name, uint64_t val);
 
 void *find_entry_point(struct templeos_thread *t, char *name);

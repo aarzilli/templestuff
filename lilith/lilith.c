@@ -45,6 +45,28 @@ char *templeos_root = NULL;
 #include "syscalls_tramp.c"
 #include "templeos_hash_table.c"
 
+#define RLF_16BIT		0x000001
+#define RLF_VGA			0x000002
+#define RLF_32BIT		0x000004
+#define RLF_PATCHED		0x000008
+#define RLF_16MEG_SYS_CODE_BP	0x000010
+#define RLF_64BIT		0x000020
+#define RLF_16MEG_ADAM_HEAP_CTRL 0x000040
+#define RLF_FULL_HEAPS		0x000050
+#define RLF_RAW			0x000100
+#define RLF_INTERRUPTS		0x000200
+#define RLF_BLKDEV		0x000400
+#define RLF_MP			0x000800
+#define RLF_COMPILER		0x001000
+#define RLF_DOC			0x002000
+#define RLF_WINMGR		0x004000
+#define RLF_REGISTRY		0x008000
+#define RLF_HOME		0x010000
+#define RLF_AUTO_COMPLETE	0x020000
+#define RLF_ADAM_SERVER		0x040000
+#define RLF_ONCE_ADAM		0x080000
+#define RLF_ONCE_USER		0x100000
+
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		fflush(stdout);
@@ -111,15 +133,19 @@ int main(int argc, char *argv[]) {
 		printf("Initialization Done\n");
 	}
 	
+	kernel_patch_var32("sys_run_level", RLF_64BIT|RLF_RAW|RLF_BLKDEV|RLF_COMPILER);
+	
 	if (extension_is(argv[1], ".BIN") || extension_is(argv[1], ".BIN.Z")) {
 		if (IN_GDB) {
 			printf("_HASH_FIND location: %lx\n", hash_get(&symbols, "_HASH_FIND")->val);
 			asm("int3;");
 		}
+		call_templeos1(&t, "DbgMode", 0);
 		call_templeos3(&t, "Load", (uint64_t)(argv[1]), 0, INT64_MAX);
 	} else if (extension_is(argv[1], ".HC") || extension_is(argv[1], ".HC.Z")) {
 		char *p = "/Compiler.BIN.Z";
 		call_templeos3(&t, "Load", (uint64_t)p, LDF_SILENT, INT64_MAX);
+		call_templeos1(&t, "DbgMode", 0);
 		call_templeos2(&t, "ExeFile", (uint64_t)(argv[1]), 0);
 	} else {
 		fprintf(stderr, "Unknown extension %s\n", argv[1]);

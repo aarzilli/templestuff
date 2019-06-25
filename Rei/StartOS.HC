@@ -17,6 +17,15 @@ HashTablePurge(adam_task->hash_table);
 
 #include "MakeAdam"
 
+/* The following runs a minimal command line */
+fp_getstr2=&SysGetStr2; // reverts a change made when we initialized DolDoc
+"sys_run_level %x\n", sys_run_level;
+LBts(&Fs->display_flags,DISPLAYf_SHOW);
+LBts(&sys_run_level, RLf_ADAM_SERVER);
+UserCmdLine;
+/* END */
+
+/****
 //Dbg("Type 'G;'");
 DocTermNew;
 WinVert(2,10);
@@ -44,3 +53,4 @@ LBts(&sys_run_level,RLf_HOME);
 #include "~/MakeHome"
 
 //After this file, the Adam task enters $LK,"server mode",A="HI:Job"$.
+***/
