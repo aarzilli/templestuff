@@ -19,7 +19,6 @@ HashTablePurge(adam_task->hash_table);
 
 /* The following runs a minimal command line */
 fp_getstr2=&SysGetStr2; // reverts a change made when we initialized DolDoc
-"sys_run_level %x\n", sys_run_level;
 LBts(&Fs->display_flags,DISPLAYf_SHOW);
 LBts(&sys_run_level, RLf_ADAM_SERVER);
 UserCmdLine;

@@ -306,7 +306,7 @@ bool wildmatch(char *test_str, char *wild_str) {
 			return false;
 		}
 		
-		if (ch2 == '(') {
+		if (ch2 == '*') {
 			fall_back_wild = wild_str - 1;
 			fall_back_src = test_str;
 			ch2 = *wild_str++;
@@ -350,64 +350,69 @@ bool filesfindmatch(char *full_name, char *files_find_mask, int64_t fuf_flags) {
 	char *mask = strclone(files_find_mask);
 	char *saveptr;
 		
-	for (;;) {
-		char *mask2 = strtok_r(mask, ";", &saveptr);
-		if (mask != NULL) {
-			free(mask);
-			mask = NULL;
-		}
-		if (mask2 == NULL) {
-			break;
-		}
+	for (char *mask2 = strtok_r(mask, ";", &saveptr); mask2 != NULL; mask2 = strtok_r(NULL, ";", &saveptr)) {
 		char *p = full_name;
 		if ((index(mask2, '/') >= 0) && (base_name != NULL)) {
 			p = base_name;
 		}
 		if (*mask2 == '!') {
 			if (wildmatch(p, mask2+1)) {
-				return false;
+				res = false;
+				break;
 			}
 		} else {
 			if (wildmatch(p, mask2)) {
 				if (((fuf_flags&FUF_JUST_TXT) != 0) && !filesfindmatch(full_name, FILEMASK_TXT, 0)) {
-					return false;
+					res = false;
+					break;
 				} else if (((fuf_flags&FUF_JUST_DD) != 0) && !filesfindmatch(full_name, FILEMASK_DD, 0)) {
-					return false;
+					res = false;
+					break;
 				} else if (((fuf_flags&FUF_JUST_SRC) != 0) && !filesfindmatch(full_name, FILEMASK_SRC, 0)) {
-					return false;
+					res = false;
+					break;
 				} else if (((fuf_flags&FUF_JUST_AOT) != 0) && !filesfindmatch(full_name, FILEMASK_AOT, 0)) {
-					return false;
+					res = false;
+					break;
 				} else if (((fuf_flags&FUF_JUST_JIT) != 0) && !filesfindmatch(full_name, FILEMASK_JIT, 0)) {
-					return false;
+					res = false;
+					break;
 				} else if (((fuf_flags&FUF_JUST_GR) != 0) && !filesfindmatch(full_name, FILEMASK_GR, 0)) {
-					return false;
+					res = false;
+					break;
 				} else {
 					res = true;
 				}
 			}
 		}
 	}
+	free(mask);
 	return res;
 }
 
 struct CDirEntry *filesfind(char *dir, int ignore, char *files_find_mask, int64_t fuf_flags, struct CDirEntry *parent, struct CDirEntry *res) {
 	DIR *d = opendir(dir);
 	if (d == NULL) {
+		printf("unopenable\n");
 		return res;
 	}
 	
-	char *dir_with_drive = fileconcat(DRIVE_ROOT_PATH, dir+ignore, false);
+	char *dir_with_drive = fileconcat(DRIVE_ROOT_PATH, dir+ignore+1, false);
 	
 	for(;;) {
 		struct dirent *ent = readdir(d);
 		if (ent == NULL) {
 			break;
 		}
+		if ((strcmp(ent->d_name, ".") == 0) || (strcmp(ent->d_name, "..") == 0)) {
+			continue;
+		}
 		
 		char *full_name = fileconcat(dir_with_drive, ent->d_name, true);
 		bool full_name_used = false;
 		
-		if (((fuf_flags&FUF_RECURSE) != 0) && (ent->d_type == DT_DIR) && (ent->d_name[0] != '.')) {
+		
+		if (((fuf_flags&FUF_RECURSE) != 0) && (ent->d_type == DT_DIR)) {
 			struct CDirEntry *tempde = (struct CDirEntry *)malloc_for_templeos(sizeof(struct CDirEntry), false, true);
 			dirent_to_cdirentry(dir, ent, tempde);
 			
@@ -424,8 +429,7 @@ struct CDirEntry *filesfind(char *dir, int ignore, char *files_find_mask, int64_
 			// is this what madness^Wgenius looks like?
 			if (((ent->d_type == DT_DIR) || 
 				((fuf_flags&FUF_JUST_DIRS) == 0)) && 
-				!(((fuf_flags&FUF_RECURSE) != 0) && (ent->d_name[0] != '.') && 
-				(ent->d_type == DT_DIR)) && 
+				!(((fuf_flags&FUF_RECURSE) != 0) && (ent->d_type == DT_DIR)) && 
 				filesfindmatch(full_name, files_find_mask, fuf_flags)) {
 				
 				struct CDirEntry *tempde = (struct CDirEntry *)malloc_for_templeos(sizeof(struct CDirEntry), false, true);
@@ -455,8 +459,6 @@ uint64_t syscall_RedSeaFilesFind(char *files_find_mask, int64_t fuf_flags, struc
 	
 	struct templeos_thread t;
 	exit_templeos(&t);
-	
-	printf("RedSeaFilesFind %s %s\n", (char *)(t.Fs->cur_dir), files_find_mask);
 	
 	if (strcmp((char *)(t.Fs->cur_dir), "/") == 0) {
 		if ((fuf_flags & FUF_JUST_DIRS) == 0){
