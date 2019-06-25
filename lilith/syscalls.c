@@ -49,7 +49,8 @@ struct CDirEntry {
   uint16_t   attr;
   uint8_t    name[CDIR_FILENAME_LEN];
   int64_t   clus,size;
-  int64_t datetime;
+  uint32_t time;
+  int32_t date;
 };
 
 #define FUF_RECURSE		0x0000001 //r
@@ -66,6 +67,11 @@ struct CDirEntry {
 #define RS_ATTR_DIR 0x10
 #define RS_ATTR_COMPRESSED 0x400
 
+int64_t yearstartdate(int64_t year) {
+	int64_t y1=year-1,yd4000=y1/4000,yd400=y1/400,yd100=y1/100,yd4=y1/4;
+	return year*365+yd4-yd100+yd400-yd4000;
+}
+
 void dirent_to_cdirentry(char *dir, struct dirent *ent, struct CDirEntry *_res) {
 	char *p = fileconcat(dir, ent->d_name, false);
 	
@@ -79,11 +85,19 @@ void dirent_to_cdirentry(char *dir, struct dirent *ent, struct CDirEntry *_res) 
 	if (extension_is(ent->d_name, ".Z")) {
 		_res->attr |= RS_ATTR_COMPRESSED;
 	}
-	strcpy((char *)(_res->name), ent->d_name);
+	strncpy((char *)(_res->name), ent->d_name, CDIR_FILENAME_LEN);
+	_res->name[CDIR_FILENAME_LEN-1] = 0;
 	_res->size = statbuf.st_size;
 	
 	_res->clus = intern_path(p);
-	_res->datetime = 0; // TODO: actually fill with the proper stuff
+	
+	struct tm tm;
+	memset(&tm, 0, sizeof(struct tm));
+	localtime_r(&statbuf.st_mtim.tv_sec, &tm);
+	
+	// See Struct2Date I don't know where the constants come from and what they represent
+	_res->time = ((int64_t)(10000 * (tm.tm_sec + 60 * (tm.tm_min + 60*tm.tm_hour)))<<21) / (15*15*3*625);
+	_res->date = yearstartdate(tm.tm_year) + tm.tm_yday;
 	
 	free(p);
 }
@@ -136,7 +150,8 @@ void builtin_file_to_cdirentry(struct builtin_file *builtin_file, struct CDirEnt
 	}
 	strcpy((char *)(_res->name), builtin_file->name);
 	_res->size = builtin_file->size;
-	_res->datetime = 0;
+	_res->time = 0;
+	_res->date = 0;
 	_res->clus = intern_path(fileconcat("/", builtin_file->name, false));
 }
 
@@ -559,7 +574,6 @@ void syscall_NowDateTimeStruct(struct CDateStruct *_ds) {
 	
 	struct tm tm;
 	memset(&tm, 0, sizeof(struct tm));
-	
 	time_t now = time(NULL);
 	localtime_r(&now, &tm);
 	
