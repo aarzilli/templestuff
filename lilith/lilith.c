@@ -67,6 +67,9 @@ char *templeos_root = NULL;
 #define RLF_ONCE_ADAM		0x080000
 #define RLF_ONCE_USER		0x100000
 
+#define FUN_SEG_CACHE_SIZE	256
+#define FUN_SEG_CACHE_ENTRY_SIZE 64 // sizeof(CFunSegCache)
+
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		fflush(stdout);
@@ -123,6 +126,9 @@ int main(int argc, char *argv[]) {
 			pow10_I64[i+309] = *((double *)(&out));
 		}
 		kernel_patch_var64("pow10_I64", (uint64_t)pow10_I64);
+		
+		kernel_patch_var64_off("dbg", 0x30, (uint64_t)malloc_for_templeos(FUN_SEG_CACHE_SIZE * FUN_SEG_CACHE_ENTRY_SIZE, false, true));
+		kernel_patch_var64_off("dbg", 0x20, call_templeos(&t, "IntFaultHndlrsNew"));
 	}
 	
 	call_templeos(&t, "LoadKernel");

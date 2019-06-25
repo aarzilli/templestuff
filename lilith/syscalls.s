@@ -135,3 +135,13 @@ asm_syscall_GetS:
 	pop_registers_except_rax
 	ret $0x18
 
+	.text
+	.globl asm_syscall_Busy
+	.type asm_syscall_Busy, @function
+asm_syscall_Busy:
+	push_registers
+	movq 0x10(%rbp), %rdi
+	call syscall_Busy
+	pop_registers
+	ret $0x8
+

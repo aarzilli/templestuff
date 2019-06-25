@@ -364,6 +364,10 @@ void kernel_patch_var64(char *name, uint64_t val) {
 	*((uint64_t *)(hash_get(&symbols, name)->val)) = val;
 }
 
+void kernel_patch_var64_off(char *name, int off, uint64_t val) {
+	*((uint64_t *)(hash_get(&symbols, name)->val + off)) = val;
+}
+
 void kernel_patch_var32(char *name, uint32_t val) {
 	*((uint32_t *)(hash_get(&symbols, name)->val)) = val;
 }

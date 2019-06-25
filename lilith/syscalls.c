@@ -603,3 +603,12 @@ uint64_t syscall_GetS(char *buf, int64_t size, uint8_t allow_ext) {
 	enter_templeos(&t);
 	return strlen((char *)buf);
 }
+
+void syscall_Busy(int64_t s) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	
+	usleep(s);
+	
+	enter_templeos(&t);
+}

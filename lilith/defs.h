@@ -56,7 +56,7 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate);
 void enter_templeos(struct templeos_thread *t);
 void exit_templeos(struct templeos_thread *t);
 
-void call_templeos(struct templeos_thread *t, char *name);
+uint64_t call_templeos(struct templeos_thread *t, char *name);
 uint64_t call_templeos2(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2);
 void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3);
 
@@ -69,6 +69,7 @@ bool is_templeos_memory(uint64_t p);
 void trampoline_kernel_patch(char *name, void dest(void));
 void kernel_patch_var32(char *name, uint32_t val);
 void kernel_patch_var64(char *name, uint64_t val);
+void kernel_patch_var64_off(char *name, int off, uint64_t val);
 
 void *find_entry_point(struct templeos_thread *t, char *name);
 

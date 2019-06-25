@@ -443,7 +443,7 @@ void *find_entry_point(struct templeos_thread *t, char *name) {
 	return NULL;
 }
 
-void call_templeos(struct templeos_thread *t, char *name) {
+uint64_t call_templeos(struct templeos_thread *t, char *name) {
 	void *entry = find_entry_point(t, name);
 	if (entry == NULL) {
 		fprintf(stderr, "Could not call %s\n", name);
@@ -453,8 +453,9 @@ void call_templeos(struct templeos_thread *t, char *name) {
 	fflush(stderr);
 	
 	enter_templeos(t);
-	((void (*)(void))entry)();
+	uint64_t r = ((uint64_t (*)(void))entry)();
 	exit_templeos(t);
+	return r;
 }
 
 extern uint64_t call_templeos1_asm(void *entry, uint64_t arg1);

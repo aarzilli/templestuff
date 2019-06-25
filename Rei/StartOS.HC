@@ -18,6 +18,7 @@ HashTablePurge(adam_task->hash_table);
 #include "MakeAdam"
 
 /* The following runs a minimal command line */
+Fs->put_doc=Fs->display_doc=DocNew;
 fp_getstr2=&SysGetStr2; // reverts a change made when we initialized DolDoc
 LBts(&Fs->display_flags,DISPLAYf_SHOW);
 LBts(&sys_run_level, RLf_ADAM_SERVER);
