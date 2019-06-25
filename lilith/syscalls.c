@@ -605,6 +605,9 @@ uint64_t syscall_GetS(char *buf, int64_t size, uint8_t allow_ext) {
 }
 
 void syscall_Busy(int64_t s) {
+	if (s == 0) {
+		return;
+	}
 	struct templeos_thread t;
 	exit_templeos(&t);
 	

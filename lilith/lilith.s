@@ -1,6 +1,7 @@
 	.macro push_registers
 	pushq %rbp
 	movq %rsp, %rbp
+	and $-16, %rsp	# stack frames must be aligned to 16-byte boundaries for glibc (but TempleOS doesn't care)
 	pushq %rax
 	pushq %rbx
 	pushq %rcx
@@ -24,6 +25,7 @@
 	.macro push_registers_except_rax
 	pushq %rbp
 	movq %rsp, %rbp
+	and $-16, %rsp	# stack frames must be aligned to 16-byte boundaries for glibc (but TempleOS doesn't care)
 	pushq %rbx
 	pushq %rcx
 	pushq %rdx
@@ -58,6 +60,7 @@
 	popq %rcx
 	popq %rbx
 	popq %rax
+	movq %rbp, %rsp
 	popq %rbp
 	.endm
 	
@@ -75,6 +78,7 @@
 	popq %rdx
 	popq %rcx
 	popq %rbx
+	movq %rbp, %rsp
 	popq %rbp
 	.endm
 	
