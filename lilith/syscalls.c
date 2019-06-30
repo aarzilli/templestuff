@@ -572,10 +572,13 @@ void syscall_NowDateTimeStruct(struct CDateStruct *_ds) {
 	
 	memset(_ds, 0, sizeof(struct CDateStruct));
 	
+	struct timeval tv;
+	memset(&tv, 0, sizeof(struct timeval));
+	gettimeofday(&tv, NULL);
+	
 	struct tm tm;
 	memset(&tm, 0, sizeof(struct tm));
-	time_t now = time(NULL);
-	localtime_r(&now, &tm);
+	localtime_r(&tv.tv_sec, &tm);
 	
 	_ds->year = tm.tm_year + 1900;
 	_ds->mon = tm.tm_mon + 1;
@@ -584,6 +587,8 @@ void syscall_NowDateTimeStruct(struct CDateStruct *_ds) {
 	_ds->hour = tm.tm_hour;
 	_ds->min = tm.tm_min;
 	_ds->sec = tm.tm_sec;
+	_ds->sec100 = tv.tv_usec / 10000;
+	//TODO: sec10000
 	
 	enter_templeos(&t);
 }

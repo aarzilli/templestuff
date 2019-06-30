@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
@@ -26,6 +27,7 @@
 #define DEBUG_PRINT_TEMPLEOS_SYMBOL_TABLE_ON_SIGNAL false
 #define DEBUG_REGISTER_ALL_ALLOCATIONS false
 #define IN_GDB false
+#define TEMPLEOS_ENTER_EXIT_CHECKS false // do extra checks on entry and exit from TempleOS tasks
 
 #define DRIVE_LETTER 'C'
 char DRIVE_ROOT_PATH[] = { DRIVE_LETTER, ':', '\0' };

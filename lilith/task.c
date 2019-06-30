@@ -258,6 +258,15 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Fs->stk->stk_base = stk_base_estimate;
 	t->Fs->stk->stk_size = 4 * 1024 * 1024;
 	
+	if (arch_prctl(ARCH_GET_GS, (uint64_t)&(t->Gs->glibc_gs)) == -1) {
+		fprintf(stderr, "could not read gs segment: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	if (arch_prctl(ARCH_GET_FS, (uint64_t)&(t->Gs->glibc_fs)) == -1) {
+		fprintf(stderr, "could not read fs segment: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	
 	struct sigaction act;
 	
 	act.sa_sigaction = signal_handler;
@@ -282,15 +291,17 @@ void enter_templeos(struct templeos_thread *t) {
 	fflush(stdout);
 	fflush(stderr);
 	
-	if (arch_prctl(ARCH_GET_GS, (uint64_t)&(t->Gs->glibc_gs)) == -1) {
-		error_phase = "saving GS base";
-		goto enter_templeos_failed;
-		
-	}
-	if (arch_prctl(ARCH_GET_FS, (uint64_t)&(t->Gs->glibc_fs)) == -1) {
-		error_phase = "saving FS base";
-		goto enter_templeos_failed;
-		
+	if (TEMPLEOS_ENTER_EXIT_CHECKS) {
+		if (arch_prctl(ARCH_GET_GS, (uint64_t)&(t->Gs->glibc_gs)) == -1) {
+			error_phase = "saving GS base";
+			goto enter_templeos_failed;
+			
+		}
+		if (arch_prctl(ARCH_GET_FS, (uint64_t)&(t->Gs->glibc_fs)) == -1) {
+			error_phase = "saving FS base";
+			goto enter_templeos_failed;
+			
+		}
 	}
 
 	if (arch_prctl(ARCH_SET_GS, (uint64_t)(t->Gs)) == -1) {
@@ -302,24 +313,26 @@ void enter_templeos(struct templeos_thread *t) {
 		goto enter_templeos_failed;
 	}
 	
-	// sanity check
-	uint64_t gs_sanity, fs_sanity;
-	if (arch_prctl(ARCH_GET_GS, (uint64_t)&gs_sanity) == -1) {
-		error_phase = "get GS base for sanity check";
-		goto enter_templeos_failed;
-	}
-	if (arch_prctl(ARCH_GET_FS, (uint64_t)&fs_sanity) == -1) {
-		error_phase = "get GS base for sanity check";
-		goto enter_templeos_failed;
-	}
-	
-	if (gs_sanity != (uint64_t)(t->Gs)) {
-		error_phase = "sanity check GS base";
-		goto enter_templeos_failed;
-	}
-	if (fs_sanity != (uint64_t)(t->Fs)) {
-		error_phase = "sanity check FS base";
-		goto enter_templeos_failed;
+	if (TEMPLEOS_ENTER_EXIT_CHECKS) {
+		// sanity check
+		uint64_t gs_sanity, fs_sanity;
+		if (arch_prctl(ARCH_GET_GS, (uint64_t)&gs_sanity) == -1) {
+			error_phase = "get GS base for sanity check";
+			goto enter_templeos_failed;
+		}
+		if (arch_prctl(ARCH_GET_FS, (uint64_t)&fs_sanity) == -1) {
+			error_phase = "get GS base for sanity check";
+			goto enter_templeos_failed;
+		}
+		
+		if (gs_sanity != (uint64_t)(t->Gs)) {
+			error_phase = "sanity check GS base";
+			goto enter_templeos_failed;
+		}
+		if (fs_sanity != (uint64_t)(t->Fs)) {
+			error_phase = "sanity check FS base";
+			goto enter_templeos_failed;
+		}
 	}
 	
 	return;
@@ -335,13 +348,21 @@ enter_templeos_failed:
 void exit_templeos(struct templeos_thread *t) {
 	char *error_phase = "none";
 
-	if (arch_prctl(ARCH_GET_GS, (uint64_t)&(t->Gs)) == -1) {
-		error_phase = "get GS base";
-		goto exit_templeos_failed;
-	}
-	if (arch_prctl(ARCH_GET_FS, (uint64_t)&(t->Fs)) == -1) {
-		error_phase = "get GS base";
-		goto exit_templeos_failed;
+	if (TEMPLEOS_ENTER_EXIT_CHECKS) {
+		if (arch_prctl(ARCH_GET_GS, (uint64_t)&(t->Gs)) == -1) {
+			error_phase = "get GS base";
+			goto exit_templeos_failed;
+		}
+		if (arch_prctl(ARCH_GET_FS, (uint64_t)&(t->Fs)) == -1) {
+			error_phase = "get GS base";
+			goto exit_templeos_failed;
+		}
+	} else {
+		uint64_t templeos_gs, templeos_fs;
+		// the following works because Terry made the first field of FS and GS structs be a self pointer.
+		asm("movq %%gs:0, %0 \n movq %%fs:0, %1 \n" : "=r" (templeos_gs), "=r" (templeos_fs));
+		t->Gs = (struct CCPU *)templeos_gs;
+		t->Fs = (struct CTask *)templeos_fs;
 	}
 	
 	if (arch_prctl(ARCH_SET_GS, (uint64_t)(t->Gs->glibc_gs)) == -1) {

@@ -11,6 +11,8 @@ Option(0,0); //(0,0)=EchoOff   (0,1)=EchoOn
 #include "/Kernel/KernelC.HH"
 #include "/Compiler/CompilerB.HH"
 
+CDate compile_start = Now;
+
 Option(OPTf_WARN_PAREN,ON);
 Option(OPTf_WARN_DUP_TYPES,ON);
 HashTablePurge(adam_task->hash_table);
@@ -22,6 +24,9 @@ Fs->put_doc=Fs->display_doc=DocNew;
 fp_getstr2=&SysGetStr2; // reverts a change made when we initialized DolDoc
 LBts(&Fs->display_flags,DISPLAYf_SHOW);
 LBts(&sys_run_level, RLf_ADAM_SERVER);
+CDateStruct elapsed;
+Date2Struct(&elapsed, Now() - compile_start);
+"Elapsed %d:%02d.%03d\n", elapsed.min, elapsed.sec, elapsed.sec100;
 UserCmdLine;
 /* END */
 
