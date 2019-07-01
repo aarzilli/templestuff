@@ -101,7 +101,7 @@ uint64_t intern_path(char *p) {
 char *fileconcat(char *p1, char *p2, bool for_templeos) {
 	char *p;
 	if (for_templeos) {
-		p = malloc_for_templeos(strlen(p1) + strlen(p2) + 2, false, false);
+		p = malloc_for_templeos(strlen(p1) + strlen(p2) + 2, data_heap, false);
 	} else {
 		p = malloc(strlen(p1) + strlen(p2) + 2);
 	}

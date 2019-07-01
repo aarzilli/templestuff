@@ -14,29 +14,43 @@ void syscall_RawPutChar(uint64_t c) {
 //uint64_t syscall_JobsHndlr(uint64_t); NOP
 
 void *syscall_MAlloc(uint64_t size, uint64_t mem_task) { // _MALLOC
-	struct templeos_thread t;
-	exit_templeos(&t);
-	
-	void *p = malloc_for_templeos(size, mem_task == CODE_HEAP_FAKE_POINTER, false);
-	
-	if (DEBUG_ALLOC) {
-		printf("Allocated %p to %p (%lx)\n", p, p+size, size);
-		//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
+	stbm_heap *heap = (stbm_heap*)mem_task;
+	if ((heap == NULL) || ((heap != code_heap) && (heap != data_heap))) {
+		heap = data_heap;
 	}
-	enter_templeos(&t);
-	return p;
+	
+	if (USE_GLIBC_MALLOC) {
+		struct templeos_thread t;
+		exit_templeos(&t);
+			
+		void *p = malloc_for_templeos(size, heap, false);
+		
+		if (DEBUG_ALLOC) {
+			printf("Allocated %p to %p (%lx)\n", p, p+size, size);
+			//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
+		}
+		enter_templeos(&t);
+		return p;
+	} else {
+		return malloc_for_templeos(size, heap, false);
+	}
 }
 
 void syscall_Free(void *p) { // _FREE
 	if (p == NULL) {
 		return;
 	}
-	struct templeos_thread t;
-	exit_templeos(&t);
 	
-	free_for_templeos(p);
-	
-	enter_templeos(&t);
+	if (USE_GLIBC_MALLOC) {
+		struct templeos_thread t;
+		exit_templeos(&t);
+		
+		free_for_templeos(p);
+		
+		enter_templeos(&t);
+	} else {
+		free_for_templeos(p);
+	}
 }
 
 #define CDIR_FILENAME_LEN       38
@@ -226,7 +240,7 @@ char *fileread(char *p, int64_t *psize, int64_t *pattr) {
 		fprintf(stderr, "could not open %s: %s\n", p, strerror(errno));
 		return NULL;
 	}
-	char *buf = (char *)malloc_for_templeos(statbuf.st_size+1, false, false);
+	char *buf = (char *)malloc_for_templeos(statbuf.st_size+1, data_heap, false);
 	char *rdbuf = buf;
 	int toread = statbuf.st_size;
 	
@@ -279,7 +293,7 @@ char *syscall_RedSeaFileRead(uint64_t cdrv, char *cur_dir, char *filename, int64
 				if (psize != NULL) {
 					*psize = builtin_files[i].size;
 				}
-				char *buf = malloc_for_templeos(builtin_files[i].size, false, false);
+				char *buf = malloc_for_templeos(builtin_files[i].size, data_heap, false);
 				fflush(stdout);
 				memcpy(buf, builtin_files[i].body, builtin_files[i].size);
 				enter_templeos(&t);
@@ -428,7 +442,7 @@ struct CDirEntry *filesfind(char *dir, int ignore, char *files_find_mask, int64_
 		
 		
 		if (((fuf_flags&FUF_RECURSE) != 0) && (ent->d_type == DT_DIR)) {
-			struct CDirEntry *tempde = (struct CDirEntry *)malloc_for_templeos(sizeof(struct CDirEntry), false, true);
+			struct CDirEntry *tempde = (struct CDirEntry *)malloc_for_templeos(sizeof(struct CDirEntry), data_heap, true);
 			dirent_to_cdirentry(dir, ent, tempde);
 			
 			tempde->parent = parent;
@@ -447,7 +461,7 @@ struct CDirEntry *filesfind(char *dir, int ignore, char *files_find_mask, int64_
 				!(((fuf_flags&FUF_RECURSE) != 0) && (ent->d_type == DT_DIR)) && 
 				filesfindmatch(full_name, files_find_mask, fuf_flags)) {
 				
-				struct CDirEntry *tempde = (struct CDirEntry *)malloc_for_templeos(sizeof(struct CDirEntry), false, true);
+				struct CDirEntry *tempde = (struct CDirEntry *)malloc_for_templeos(sizeof(struct CDirEntry), data_heap, true);
 				dirent_to_cdirentry(dir, ent, tempde);
 				
 				tempde->parent = parent;
@@ -484,7 +498,7 @@ uint64_t syscall_RedSeaFilesFind(char *files_find_mask, int64_t fuf_flags, struc
 					continue;
 				}
 				
-				struct CDirEntry *tempde = (struct CDirEntry *)malloc_for_templeos(sizeof(struct CDirEntry), false, true);
+				struct CDirEntry *tempde = (struct CDirEntry *)malloc_for_templeos(sizeof(struct CDirEntry), data_heap, true);
 				builtin_file_to_cdirentry(&builtin_files[i], tempde);
 				
 				tempde->parent = parent;
@@ -538,25 +552,29 @@ uint64_t syscall_SysTimerRead(void) {
 //uint64_t syscall_Snd(int8_t); NOP
 
 uint64_t syscall_MHeapCtrl(uint8_t *p) { // _MHEAP_CTRL
-	struct templeos_thread t;
-	exit_templeos(&t);
-	
-	struct templeos_mem_entry_t *e = NULL;
-	if (DEBUG_REGISTER_ALL_ALLOCATIONS || (((uint64_t)p) < 0x100000000)) {
-		e = get_templeos_memory((uint64_t)p);
-	}
-	
-	uint64_t r;
-	if ((e != NULL) && e->is_mmapped) {
-		r = CODE_HEAP_FAKE_POINTER;
+	if (USE_GLIBC_MALLOC) {
+		struct templeos_thread t;
+		exit_templeos(&t);
+		
+		struct templeos_mem_entry_t *e = NULL;
+		if (DEBUG_REGISTER_ALL_ALLOCATIONS || (((uint64_t)p) < 0x100000000)) {
+			e = get_templeos_memory((uint64_t)p);
+		}
+		
+		uint64_t r;
+		if ((e != NULL) && e->is_mmapped) {
+			r = (uint64_t)code_heap;
+		} else {
+			r = (uint64_t)data_heap;
+		}
+		
+		// return heap ctrl for this location?
+		
+		enter_templeos(&t);
+		return r;
 	} else {
-		r = DATA_HEAP_FAKE_POINTER;
+		return (uint64_t)stbm_get_heap(p);
 	}
-	
-	// return heap ctrl for this location?
-	
-	enter_templeos(&t);
-	return r;
 }
 
 struct CDateStruct

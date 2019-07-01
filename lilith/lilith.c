@@ -28,6 +28,7 @@
 #define DEBUG_REGISTER_ALL_ALLOCATIONS false
 #define IN_GDB false
 #define TEMPLEOS_ENTER_EXIT_CHECKS false // do extra checks on entry and exit from TempleOS tasks
+#define USE_GLIBC_MALLOC false
 
 #define DRIVE_LETTER 'C'
 char DRIVE_ROOT_PATH[] = { DRIVE_LETTER, ':', '\0' };
@@ -46,6 +47,7 @@ char *templeos_root = NULL;
 #include "syscalls.c"
 #include "syscalls_tramp.c"
 #include "templeos_hash_table.c"
+#include "alloc.c"
 
 #define RLF_16BIT		0x000001
 #define RLF_VGA			0x000002
@@ -85,6 +87,8 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "TEMPLEOS environment variable is not set!\n");
 		templeos_root = NULL;
 	}
+	
+	heaps_init();
 
 	hash_init(&symbols, 4096);
 	hash_init(&paths_table, 4096);
@@ -103,11 +107,11 @@ int main(int argc, char *argv[]) {
 	
 	{ // SysGlblsInit
 		call_templeos1(&t, "DbgMode", 1);
-		kernel_patch_var64("ext", (uint64_t)(malloc_for_templeos(EXT_EXTS_NUM * sizeof(uint8_t *), false, true)));
+		kernel_patch_var64("ext", (uint64_t)(malloc_for_templeos(EXT_EXTS_NUM * sizeof(uint8_t *), data_heap, true)));
 		call_templeos(&t, "KeyDevInit");
 		
-		uint8_t *rev_bits_table = malloc_for_templeos(256, false, true);
-		uint8_t *set_bits_table = malloc_for_templeos(256, false, true);
+		uint8_t *rev_bits_table = malloc_for_templeos(256, data_heap, true);
+		uint8_t *set_bits_table = malloc_for_templeos(256, data_heap, true);
 		for (int i = 0; i < 256; ++i) {
 			for (int j = 0; j < 8; ++j) {
 				if (Bt((uint8_t *)(&i), 7-j)) {
@@ -121,7 +125,7 @@ int main(int argc, char *argv[]) {
 		kernel_patch_var64("rev_bits_table", (uint64_t)rev_bits_table);
 		kernel_patch_var64("set_bits_table", (uint64_t)set_bits_table);
 		
-		double *pow10_I64 = malloc_for_templeos(sizeof(double) * (308+308+2), false, true);
+		double *pow10_I64 = malloc_for_templeos(sizeof(double) * (308+308+2), data_heap, true);
 		for (int i = -308; i < 309; i++) {
 			double f = (double)i;
 			uint64_t out = call_templeos1(&t, "_POW10", *((uint64_t *)(&f)));
@@ -129,7 +133,7 @@ int main(int argc, char *argv[]) {
 		}
 		kernel_patch_var64("pow10_I64", (uint64_t)pow10_I64);
 		
-		kernel_patch_var64_off("dbg", 0x30, (uint64_t)malloc_for_templeos(FUN_SEG_CACHE_SIZE * FUN_SEG_CACHE_ENTRY_SIZE, false, true));
+		kernel_patch_var64_off("dbg", 0x30, (uint64_t)malloc_for_templeos(FUN_SEG_CACHE_SIZE * FUN_SEG_CACHE_ENTRY_SIZE, data_heap, true));
 		kernel_patch_var64_off("dbg", 0x20, call_templeos(&t, "IntFaultHndlrsNew"));
 	}
 	

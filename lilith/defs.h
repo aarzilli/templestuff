@@ -1,6 +1,23 @@
 #ifndef __LILITH_DEFS_H__
 #define __LILITH_DEFS_H__
 
+// alloc.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define STBM_MUTEX_HANDLE int *
+#define STBM_MUTEX_ACQUIRE spin_lock
+#define STBM_MUTEX_RELEASE spin_unlock
+#define STBM_UINT32 uint32_t
+#define STBM_UINTPTR uintptr_t
+#define STBM_POINTER_SIZE 64
+#define STBM_ASSERT(x) { if(!(x)) _exit(1); }
+#define STBM_MEMSET memset
+#define STBM_MEMCPY memcpy
+#include "stb_malloc.h"
+
+extern stbm_heap *data_heap;
+extern stbm_heap *code_heap;
+void heaps_init(void);
+
 // utils.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 extern struct hash_t paths_table;
 
@@ -60,7 +77,7 @@ uint64_t call_templeos(struct templeos_thread *t, char *name);
 uint64_t call_templeos2(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2);
 void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3);
 
-void *malloc_for_templeos(uint64_t size, bool executable, bool zero);
+void *malloc_for_templeos(uint64_t size, stbm_heap *heap, bool zero);
 void free_for_templeos(void *p);
 void register_templeos_memory(void *p, size_t sz, bool is_mmapped);
 struct templeos_mem_entry_t *get_templeos_memory(uint64_t p);

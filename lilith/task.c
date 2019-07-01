@@ -199,9 +199,6 @@ int arch_prctl(int code, unsigned long addr) {
 #define TASK_HASH_TABLE_SIZE	(1<<10)
 #define TMP_FILE_NAME "~/Tmp.DD.Z"
 
-#define DATA_HEAP_FAKE_POINTER 0x1
-#define CODE_HEAP_FAKE_POINTER 0x2
-
 void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Gs = (struct CCPU *)calloc(1, sizeof(struct CCPU));
 	t->Gs->addr = t->Gs;
@@ -210,14 +207,14 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Fs->gs = t->Gs;
 	t->Fs->task_signature = 0x536b7354; //TskS
 	
-	t->Fs->data_heap = DATA_HEAP_FAKE_POINTER;
-	t->Fs->code_heap = CODE_HEAP_FAKE_POINTER;
+	t->Fs->data_heap = (uint64_t)data_heap;
+	t->Fs->code_heap = (uint64_t)code_heap;
 	
-	t->Fs->cur_dv = malloc_for_templeos(sizeof(struct CDrv), false, true);
+	t->Fs->cur_dv = malloc_for_templeos(sizeof(struct CDrv), data_heap, true);
 	t->Fs->cur_dv->dv_signature = 0x56535644;
 	t->Fs->cur_dv->fs_type = 1; // we're going to impersonate the RedSea file system (because it's easier)
 	t->Fs->cur_dv->drv_let = DRIVE_LETTER;
-	t->Fs->cur_dv->bd = malloc_for_templeos(sizeof(struct CBlkDev), false, true);
+	t->Fs->cur_dv->bd = malloc_for_templeos(sizeof(struct CBlkDev), data_heap, true);
 	t->Fs->cur_dv->bd->bd_signature = 0x56534442;
 	t->Fs->cur_dv->bd->type = 1; // Ram disk
 	char *w = get_current_dir_name();
@@ -235,7 +232,7 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	char *homep = fileconcat(DRIVE_ROOT_PATH, getenv("HOME"), true);
 	blkdev->home_dir = (uint8_t *)homep;
 	blkdev->let_to_drv[DRIVE_LETTER - 'A'] = t->Fs->cur_dv;
-	blkdev->tmp_filename = malloc_for_templeos(strlen(TMP_FILE_NAME)+1, false, false);
+	blkdev->tmp_filename = malloc_for_templeos(strlen(TMP_FILE_NAME)+1, data_heap, false);
 	strcpy((char *)(blkdev->tmp_filename), TMP_FILE_NAME);
 	
 	// que_init
@@ -254,7 +251,7 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Fs->srv_ctrl.next_done = (void *)&(t->Fs->srv_ctrl.next_done);
 	t->Fs->srv_ctrl.last_done = (void *)&(t->Fs->srv_ctrl.last_done);
 	
-	t->Fs->stk = malloc_for_templeos(sizeof(struct CTaskStk), false, true);
+	t->Fs->stk = malloc_for_templeos(sizeof(struct CTaskStk), data_heap, true);
 	t->Fs->stk->stk_base = stk_base_estimate;
 	t->Fs->stk->stk_size = 4 * 1024 * 1024;
 	
@@ -401,7 +398,7 @@ struct templeos_mem_map_t {
 
 void register_templeos_memory(void *p, size_t sz, bool is_mmapped) {
 	//TODO: register_templeos_memory is inefficient (maybe we shouldn't even call it?)
-
+	
 	if (templeos_mem_map.v == NULL) {
 		templeos_mem_map.v = (struct templeos_mem_entry_t *)calloc(TEMPLEOS_MEM_MAP_INITIAL_SIZE, sizeof(struct templeos_mem_entry_t));
 		templeos_mem_map.cap = TEMPLEOS_MEM_MAP_INITIAL_SIZE;
@@ -555,25 +552,34 @@ void trampoline_kernel_patch(char *name, void dest(void)) {
 
 // malloc_for_templeos returns a chunk of memory of the specified size
 // allocated for TempleOS (TempleOS will be able to call Free on it).
-void *malloc_for_templeos(uint64_t size, bool executable, bool zero) {
-	void *p;
-	bool is_mmapped = false;
-	if (executable) {
-		p = mmap(NULL, size, PROT_EXEC|PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_32BIT, -1, 0);
-		is_mmapped = true;
+void *malloc_for_templeos(uint64_t size, stbm_heap *heap, bool zero) {
+	if (USE_GLIBC_MALLOC) {
+		bool executable = (heap == code_heap);
+		void *p;
+		bool is_mmapped = false;
+		if (executable) {
+			p = mmap(NULL, size, PROT_EXEC|PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_32BIT, -1, 0);
+			is_mmapped = true;
+		} else {
+			p = malloc(size);
+		}
+		if (zero) {
+			memset(p, 0, size);
+		}
+		if (p == 0) {
+			return p;
+		}
+		if (is_mmapped || DEBUG_REGISTER_ALL_ALLOCATIONS) {
+			register_templeos_memory(p, size, is_mmapped);
+		}
+		return p;
 	} else {
-		p = malloc(size);
-	}
-	if (zero) {
-		memset(p, 0, size);
-	}
-	if (p == 0) {
+		void *p = stbm_alloc(NULL, heap, size, 0);
+		if (zero) {
+			memset(p, 0, size);
+		}
 		return p;
 	}
-	if (is_mmapped || DEBUG_REGISTER_ALL_ALLOCATIONS) {
-		register_templeos_memory(p, size, is_mmapped);
-	}
-	return p;
 }
 
 // free_for_templeos frees memory allocated for TempleOS (p could have been
@@ -582,47 +588,52 @@ void free_for_templeos(void *p) {
 	if (p == NULL) {
 		return;
 	}
-	
-	struct templeos_mem_entry_t *e = NULL;
-	if (DEBUG_REGISTER_ALL_ALLOCATIONS || (((uint64_t)p) < 0x100000000)) {
-		e = get_templeos_memory((uint64_t)p);
-	}
-	
-	if (DEBUG_ALLOC) {
-		printf("Freeing %p (%p)", p, e);
-		if (e != NULL) {
-			printf(" mem=%p sz=%lx is_mmapped=%d", e->mem, e->sz, e->is_mmapped);
-			if (p != e->mem) {
-				printf(" MISMATCH");
-			}
+		
+	if (USE_GLIBC_MALLOC) {
+		struct templeos_mem_entry_t *e = NULL;
+		if (DEBUG_REGISTER_ALL_ALLOCATIONS || (((uint64_t)p) < 0x100000000)) {
+			e = get_templeos_memory((uint64_t)p);
 		}
-		printf("\n");
-		//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
-	}
-	
-	if ((e == NULL) && DEBUG_REGISTER_ALL_ALLOCATIONS) {
-		printf("trying to free unknown memory %p\n", p);
-		fflush(stdout);
-		_exit(0);
-	}
-	
-	if (DEBUG_REGISTER_ALL_ALLOCATIONS) {
-		if (e->mem != p) {
-			printf("mismatched free\n");
+		
+		if (DEBUG_ALLOC) {
+			printf("Freeing %p (%p)", p, e);
+			if (e != NULL) {
+				printf(" mem=%p sz=%lx is_mmapped=%d", e->mem, e->sz, e->is_mmapped);
+				if (p != e->mem) {
+					printf(" MISMATCH");
+				}
+			}
+			printf("\n");
+			//print_stack_trace(stdout, t.Fs->rip, t.Fs->rbp);
+		}
+		
+		if ((e == NULL) && DEBUG_REGISTER_ALL_ALLOCATIONS) {
+			printf("trying to free unknown memory %p\n", p);
 			fflush(stdout);
 			_exit(0);
 		}
-	}
-	
-	if (e != NULL) {
-		if (e->is_mmapped) {
-			munmap(e->mem, e->sz);
-		} else {
-			free(e->mem);
+		
+		if (DEBUG_REGISTER_ALL_ALLOCATIONS) {
+			if (e->mem != p) {
+				printf("mismatched free\n");
+				fflush(stdout);
+				_exit(0);
+			}
 		}
-		unregister_templeos_memory((uint64_t)p);
+		
+		if (e != NULL) {
+			if (e->is_mmapped) {
+				munmap(e->mem, e->sz);
+			} else {
+				free(e->mem);
+			}
+			unregister_templeos_memory((uint64_t)p);
+		} else {
+			free(p);
+		}
 	} else {
-		free(p);
+		stbm_heap *h = stbm_get_heap(p);
+		stbm_free(NULL, h, p);
 	}
 }
 
