@@ -229,7 +229,7 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	struct CBlkDevGlbls *blkdev = (struct CBlkDevGlbls *)(blkdev_export->val);
 	blkdev->boot_drv_let = DRIVE_LETTER;
 	blkdev->first_hd_drv_let = DRIVE_LETTER;
-	char *homep = fileconcat(DRIVE_ROOT_PATH, getenv("HOME"), true);
+	char *homep = fileconcat(DRIVE_ROOT_PATH, getenv("HOME")+1, true);
 	blkdev->home_dir = (uint8_t *)homep;
 	blkdev->let_to_drv[DRIVE_LETTER - 'A'] = t->Fs->cur_dv;
 	blkdev->tmp_filename = malloc_for_templeos(strlen(TMP_FILE_NAME)+1, data_heap, false);
@@ -245,11 +245,15 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	
 	// que_init
 	t->Fs->srv_ctrl.next_waiting = (void *)&(t->Fs->srv_ctrl.next_waiting);
-	t->Fs->srv_ctrl.last_waiting = (void *)&(t->Fs->srv_ctrl.last_waiting);
+	t->Fs->srv_ctrl.last_waiting = (void *)&(t->Fs->srv_ctrl.next_waiting);
 	
 	// que_init
 	t->Fs->srv_ctrl.next_done = (void *)&(t->Fs->srv_ctrl.next_done);
-	t->Fs->srv_ctrl.last_done = (void *)&(t->Fs->srv_ctrl.last_done);
+	t->Fs->srv_ctrl.last_done = (void *)&(t->Fs->srv_ctrl.next_done);
+	
+	// que_init
+	t->Fs->next_ctrl = (void *)&(t->Fs->next_ctrl);
+	t->Fs->last_ctrl = (void *)&(t->Fs->next_ctrl);
 	
 	t->Fs->stk = malloc_for_templeos(sizeof(struct CTaskStk), data_heap, true);
 	t->Fs->stk->stk_base = stk_base_estimate;

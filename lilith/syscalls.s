@@ -145,3 +145,10 @@ asm_syscall_Busy:
 	pop_registers
 	ret $0x8
 
+	.text
+	.globl asm_syscall_TaskDerivedValsUpdate
+	.type asm_syscall_TaskDerivedValsUpdate, @function
+asm_syscall_TaskDerivedValsUpdate:
+	// don't do anything
+	ret $0x10
+

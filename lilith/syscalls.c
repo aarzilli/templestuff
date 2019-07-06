@@ -534,6 +534,53 @@ uint64_t syscall_RedSeaFilesFind(char *files_find_mask, int64_t fuf_flags, struc
 	return (uint64_t)res;
 }
 
+/* int64_t syscall_RedSeaFileWrite(uint64_t dv, char *cur_dir, char *name, char *buf, int64_t size) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	
+	char *p = NULL;
+	
+	if (templeos_root != NULL) {
+		char *p2 = fileconcat(templeos_root, cur_dir, false);
+		struct stat statbuf;
+		memset(&statbuf, 0, sizeof(struct stat));
+		if (stat(p2, &statbuf) == 0) {
+			p = fileconcat(p2, name, false);
+		}
+		free(p2);
+	}
+	
+	if (p == NULL) {
+		p = fileconcat(cur_dir, name, false);
+	}
+	
+	int64_t clus = -1;
+	
+	int fd = open(p, O_CREAT|O_TRUNC|O_WRONLY, 0660);
+	if (fd > 0) {
+		int64_t rsz = size;
+		while (rsz > 0) {
+			int64_t n = write(fd, buf, rsz);
+			if (n < 0) {
+				if (errno == EAGAIN) {
+					continue;
+				}
+				break;
+			}
+			rsz -= n;
+			buf += n;
+		}
+		if (rsz == 0) {
+			clus = intern_path(p);
+		}
+	}
+		
+	free(p);
+	
+	enter_templeos(&t);
+	return clus;
+}*/
+
 uint64_t syscall_SysTimerRead(void) {
 	struct templeos_thread t;
 	exit_templeos(&t);
@@ -638,3 +685,5 @@ void syscall_Busy(int64_t s) {
 	
 	enter_templeos(&t);
 }
+
+//void syscall_TaskDerivedValsUpdate(struct CTask *task, bool update_z_buf); NOP

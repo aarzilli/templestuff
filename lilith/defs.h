@@ -125,4 +125,10 @@ extern struct builtin_file builtin_files[];
 
 void setup_syscall_trampolines(void);
 
+// x11.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+extern char *x11_display;
+extern bool x11_enabled;
+
+
 #endif

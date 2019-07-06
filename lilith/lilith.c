@@ -48,6 +48,7 @@ char *templeos_root = NULL;
 #include "syscalls_tramp.c"
 #include "templeos_hash_table.c"
 #include "alloc.c"
+#include "x11.c"
 
 #define RLF_16BIT		0x000001
 #define RLF_VGA			0x000002
@@ -74,6 +75,8 @@ char *templeos_root = NULL;
 #define FUN_SEG_CACHE_SIZE	256
 #define FUN_SEG_CACHE_ENTRY_SIZE 64 // sizeof(CFunSegCache)
 
+#define USER_SPACE_TEMPLE "/UserSpaceTemple/"
+
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		fflush(stdout);
@@ -84,9 +87,35 @@ int main(int argc, char *argv[]) {
 	templeos_root = getenv("TEMPLEOS");
 	
 	if ((templeos_root == NULL) || (strlen(templeos_root) == 0)) {
-		fprintf(stderr, "TEMPLEOS environment variable is not set!\n");
 		templeos_root = NULL;
+		if (extension_is(argv[1], ".HC")) {
+			char *p = realpath(argv[1], NULL);
+			char *p2 = strstr(p, USER_SPACE_TEMPLE);
+			if (p2 != NULL) {
+				p2[strlen(USER_SPACE_TEMPLE)] = 0;
+				templeos_root = p;
+				printf("TempleOS root set to %s\n", templeos_root);
+			}
+		}
+		
+		if (templeos_root == NULL) {
+			fprintf(stderr, "TEMPLEOS environment variable is not set!\n");
+		}
 	}
+	
+	x11_display = getenv("DISPLAY");
+	if ((x11_display == NULL) || (strlen(x11_display) == 0)) {
+		x11_display = NULL;
+	}
+	
+	char *x11_enabled_str = getenv("X11_ENABLED");
+	x11_enabled = (x11_display != NULL) && (x11_enabled_str != NULL) && (strlen(x11_enabled_str) != 0);
+	
+	/*
+	char *cfgdir = fileconcat(getenv("HOME"), ".lilith", false);
+	mkdir(cfgdir, 0770);
+	free(cfgdir);
+	*/
 	
 	heaps_init();
 
@@ -145,7 +174,15 @@ int main(int argc, char *argv[]) {
 		printf("Initialization Done\n");
 	}
 	
-	kernel_patch_var32("sys_run_level", RLF_64BIT|RLF_RAW|RLF_BLKDEV|RLF_COMPILER);
+	uint64_t sys_run_level = RLF_64BIT|RLF_BLKDEV|RLF_COMPILER;
+	
+	if (!x11_enabled) {
+		sys_run_level |= RLF_RAW;
+	} else {
+		// TODO: start x11 thread
+	}
+	
+	kernel_patch_var32("sys_run_level", sys_run_level);
 	
 	if (extension_is(argv[1], ".BIN") || extension_is(argv[1], ".BIN.Z")) {
 		if (IN_GDB) {
