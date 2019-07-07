@@ -104,6 +104,19 @@ asm_syscall_RedSeaFileWrite:
 	ret $0x38
 
 	.text
+	.globl asm_syscall_RedSeaMkDir
+	.type asm_syscall_RedSeaMkDir, @function
+asm_syscall_RedSeaMkDir:
+	push_registers_except_rax
+	movq 0x10(%rbp), %rdi
+	movq 0x18(%rbp), %rsi
+	movq 0x20(%rbp), %rdx
+	movq 0x28(%rbp), %rcx
+	call syscall_RedSeaMkDir
+	pop_registers_except_rax
+	ret $0x20
+
+	.text
 	.globl asm_syscall_SysTimerRead
 	.type asm_syscall_SysTimerRead, @function
 asm_syscall_SysTimerRead:

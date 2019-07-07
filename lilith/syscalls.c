@@ -583,6 +583,38 @@ int64_t syscall_RedSeaFileWrite(uint64_t dv, char *cur_dir, char *name, char *bu
 	return clus;
 }
 
+bool syscall_RedSeaMkDir(uint64_t dv, char *cur_dir, char *name, int64_t entry_cnt) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+		
+	char *p = NULL;
+	
+	if (templeos_root != NULL) {
+		char *p2 = fileconcat(templeos_root, cur_dir, false);
+		struct stat statbuf;
+		memset(&statbuf, 0, sizeof(struct stat));
+		if (stat(p2, &statbuf) == 0) {
+			p = fileconcat(p2, name, false);
+		}
+		free(p2);
+	}
+	
+	if (p == NULL) {
+		p = fileconcat(cur_dir, name, false);
+	}
+	
+	bool ok = false;
+	
+	if (mkdir(p, 0770) >= 0) {
+		ok = true;
+	}
+	
+	free(p);
+	
+	enter_templeos(&t);
+	return ok;
+}
+
 uint64_t syscall_SysTimerRead(void) {
 	struct templeos_thread t;
 	exit_templeos(&t);

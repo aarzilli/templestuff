@@ -8,6 +8,7 @@ extern void asm_syscall_RedSeaFileFind(void);
 extern void asm_syscall_RedSeaFileRead(void);
 extern void asm_syscall_RedSeaFilesFind(void);
 extern void asm_syscall_RedSeaFileWrite(void);
+extern void asm_syscall_RedSeaMkDir(void);
 extern void asm_syscall_SysTimerRead(void);
 extern void asm_syscall_Snd(void);
 extern void asm_syscall_MHeapCtrl(void);
@@ -27,6 +28,7 @@ void setup_syscall_trampolines(void) {
 	trampoline_kernel_patch("RedSeaFileRead", &asm_syscall_RedSeaFileRead);
 	trampoline_kernel_patch("RedSeaFilesFind", &asm_syscall_RedSeaFilesFind);
 	trampoline_kernel_patch("RedSeaFileWrite", &asm_syscall_RedSeaFileWrite);
+	trampoline_kernel_patch("RedSeaMkDir", &asm_syscall_RedSeaMkDir);
 	trampoline_kernel_patch("SysTimerRead", &asm_syscall_SysTimerRead);
 	trampoline_kernel_patch("Snd", &asm_syscall_Snd);
 	trampoline_kernel_patch("_MHEAP_CTRL", &asm_syscall_MHeapCtrl);

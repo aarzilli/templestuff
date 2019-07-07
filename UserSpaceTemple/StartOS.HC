@@ -34,6 +34,10 @@ if (Bt(&sys_run_level, RLf_RAW)) {
 	Cd(start_up_directory);
 	UserCmdLine;
 } else {
+	sys_winmgr_task = adam_task; // TODO: this will eventually need to be removed
+	sys_winmgr_task->pix_width = 640;
+	sys_winmgr_task->pix_height = 480;
+	
 	DocTermNew;
 	WinVert(2,10);
 	LBts(&Fs->display_flags,DISPLAYf_SHOW);
@@ -41,12 +45,13 @@ if (Bt(&sys_run_level, RLf_RAW)) {
 	LBts(&sys_run_level,RLf_REGISTRY);
 	if (!ins_reg.registered)
 	  InsUnreg;
-	/*
+
 	WallPaperInit;
 	
 	if (DrvIsWritable)
 		DirMk("/Tmp"); //Good to have a Tmp
 	
+	/*
 	Option(OPTf_WARN_PAREN,OFF);
 	Option(OPTf_WARN_DUP_TYPES,OFF);
 	LBts(&sys_run_level,RLf_HOME);
