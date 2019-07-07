@@ -15,6 +15,8 @@
 #define HTF_UNRESOLVED		0x40000000
 #define HTF_LOCAL		0x80000000
 
+struct CDC;
+
 struct CHashTable {
   struct CHashTable *next;
   int64_t   mask,locked_flags;
@@ -90,8 +92,6 @@ struct CHashGlblVar {
 #define STR_LEN 144
 #define TASK_NAME_LEN 32
 #define TASK_EXCEPT_CALLERS 8
-
-struct CDC {}; // we needn't concer with this class
 
 struct CJobCtrl {
 	void *next_waiting, *last_waiting;
@@ -183,4 +183,120 @@ struct CTask { //The Fs segment reg points to current CTask.
 	struct CWinScroll horz_scroll,vert_scroll;
 	
 	int64_t   user_data;
+};
+
+struct CGrGlbls {
+  int64_t	*to_8_bits,*to_8_colors;
+  struct CDC	*scrn_image,	//Read only.
+	*dc,		//Persistent
+	*dc1,
+	*dc2,		//Updated every refresh
+	*dc_cache,
+	*zoomed_dc;
+  uint32_t	*text_base;	//See $LK,"TextBase Layer",A="HI:TextBase Layer"$. (Similar to 0xB8000 but 32 bits)
+  uint16_t	*win_z_buf;
+
+  #define SPHT_ELEM_CODE	1
+  struct CHashTable *sprite_hash;
+
+  uint16_t	*win_uncovered_bitmap;
+  int64_t	highest_uncovered;
+  uint16_t	*vga_text_cache;
+  int64_t	pan_text_x,pan_text_y;	//[-7,7]
+  void	(*fp_final_scrn_update)(struct CDC *dc);//Mouse cursor is handled here.
+  void	(*fp_wall_paper)(struct CTask *task);
+  void	(*fp_draw_ms)(struct CDC *dc,int64_t x,int64_t y);
+  void	(*fp_draw_grab_ms)(struct CDC *dc,int64_t x,int64_t y,bool closed);
+  uint8_t	*empty_sprite; //Gets assigned $LK,"gr.empty_sprite",A="FF:::/Adam/AMouse.HC,empty_sprite"$
+
+  #define GR_PEN_BRUSHES_NUM 64
+  struct CDC	*pen_brushes[GR_PEN_BRUSHES_NUM],
+	*collision_pen_brushes[GR_PEN_BRUSHES_NUM],
+	*even_pen_brushes[GR_PEN_BRUSHES_NUM],
+	*odd_pen_brushes[GR_PEN_BRUSHES_NUM];
+  int8_t	circle_lo[GR_PEN_BRUSHES_NUM][GR_PEN_BRUSHES_NUM],
+	circle_hi[GR_PEN_BRUSHES_NUM][GR_PEN_BRUSHES_NUM];
+
+  #define GR_SCRN_ZOOM_MAX	8
+  uint8_t	*scrn_zoom_tables[GR_SCRN_ZOOM_MAX+1];
+  int64_t	scrn_zoom,sx,sy;
+
+  //When zoomed, this keeps the mouse centered.
+  bool	continuous_scroll,
+	hide_row,hide_col;
+};
+
+#define COLORS_NUM		16
+
+typedef uint64_t CBGR48;
+typedef uint32_t CColorROPU32;
+
+struct CD3I32 {
+	int32_t x, y, z;
+};
+
+struct CGrSym {
+  int32_t	sx,sy,sz,pad;
+//Normal of symmetry plane
+  int64_t	snx,sny,snz;
+};
+
+
+
+struct CDC {
+  uint64_t cdate;
+  int32_t	x0,y0,
+	width,width_internal,
+	height,
+	flags;
+  CBGR48 palette[COLORS_NUM];
+
+  //public (Change directly)
+  CColorROPU32 color,
+	bkcolor, //Set for use with $LK,"ROP_COLLISION",A="MN:ROP_COLLISION"$
+	color2; //Internally used for $LK,"GrFloodFill",A="MN:GrFloodFill"$()
+  struct CD3I32 ls; //Light source (should be normalized to 65536).
+
+  //dither_probability_u16 is basically a U16.
+  //It is activated by $LK,"ROPF_PROBABILITY_DITHER",A="MN:ROPF_PROBABILITY_DITHER"$.
+  //0x0000 =100% color.c0
+  //0x8000 =50%  color.c0   50% color.c1
+  //0x10000=100% color.c1
+  //See $LK,"::/Demo/Graphics/SunMoon.HC"$ and	$LK,"::/Demo/Graphics/Shading.HC"$.
+  uint64_t dither_probability_u16;
+
+  struct CDC *brush;
+
+  //Set with $LK,"DCMat4x4Set",A="MN:DCMat4x4Set"$().  $LK,"Free",A="MN:Free"$() before setting.
+  int64_t	*r, //rotation matrix of quads decimal in lo
+	r_norm; //shifted 32 bits.  Used for scaling thick
+
+  //public (Change directly)
+  int32_t	x,y,z,
+	thick;
+
+  //Can be changed from the default $LK,"DCTransform",A="MN:DCTransform"$()
+  void	(*transform)(struct CDC *dc,int64_t *x,int64_t *y,int64_t *z);
+
+  //Can be changed from the default $LK,"DCLighting",A="MN:DCLighting"$()
+  void	(*lighting)(struct CDC *dc,struct CD3I32 *p1,struct CD3I32 *p2,
+	struct CD3I32 *p3,CColorROPU32 color);
+
+  //Set by $LK,"DCSymmetrySet",A="MN:DCSymmetrySet"$() or $LK,"DCSymmetry3Set",A="MN:DCSymmetry3Set"$()
+  struct CGrSym sym;
+
+  int32_t	cur_x,cur_y,cur_z,pad;
+  int64_t	collision_cnt;
+
+  int64_t	nearest_dist,
+	min_x,max_x,min_y,max_y; //Set by $LK,"DCF_RECORD_EXTENTS",A="MN:DCF_RECORD_EXTENTS"$ (scrn coordinates)
+
+  uint32_t	dc_signature,pad2;
+  struct CTask	*mem_task,*win_task;
+  struct CDC	*alias;
+  uint8_t	*body;
+
+  //Set by $LK,"DCDepthBufAlloc",A="MN:DCDepthBufAlloc"$()
+  int32_t	*depth_buf;
+  int64_t	db_z; //private
 };

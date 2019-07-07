@@ -77,6 +77,22 @@ char *templeos_root = NULL;
 
 #define USER_SPACE_TEMPLE "/UserSpaceTemple/"
 
+void dbg_dc(struct CDC *dc) {
+	int count = 0;
+	if (dc->body != NULL) {
+		for (int i = 0; i < dc->height; i++) {
+			for (int j = 0; j < dc->width; j++) {
+				//printf("%x", dc->body[(i*dc->width_internal) + j]);
+				if (dc->body[(i*dc->width_internal) + j] != 0) {
+					++count;
+				}
+			}
+			//printf("\n");
+		}
+	}
+	printf("total %d\n", count);
+}
+
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		fflush(stdout);
@@ -199,8 +215,12 @@ int main(int argc, char *argv[]) {
 			call_templeos1(&t, "WallPaperSimple", (uint64_t)&t); // TODO: should call real WallPaper function
 			call_templeos(&t, "GrUpdateScrn");
 			
-			void *gr = templeos_var64_ptr(t.Fs, "gr");
+			struct CGrGlbls *gr = (struct CGrGlbls *)templeos_var64_ptr(t.Fs, "gr");
 			printf("gr is %p\n", gr);
+			printf("zoom %ld\n", gr->scrn_zoom);
+			printf("height %d internal_width %d\n", gr->dc1->height, gr->dc1->width_internal);
+			dbg_dc(gr->dc1);
+			//dc1->width dc1->height dc1->width_internal (aligned) dc1->body contents 1 byte per pixel (palette index?)
 		}
 	} else {
 		fprintf(stderr, "Unknown extension %s\n", argv[1]);

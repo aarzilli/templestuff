@@ -1,7 +1,6 @@
 //This is executed by the Adam task at boot.
 //See $LK,"Adam Start-up",A="FF:::/Kernel/KMain.HC,\"StartOS"$.
 
-
 #help_index "Compiler/Directive"
 public extern I8i Option(I64i num,I8i val);
 Option(0,0); //(0,0)=EchoOff   (0,1)=EchoOn
@@ -17,6 +16,15 @@ CDate compile_start = Now;
 Option(OPTf_WARN_PAREN,ON);
 Option(OPTf_WARN_DUP_TYPES,ON);
 HashTablePurge(adam_task->hash_table);
+
+if (!Bt(&sys_run_level, RLf_RAW)) { // SysGrInit equivalent
+	text.font = sys_font_std;
+	text.aux_font = sys_font_cyrillic;
+	text.cols = GR_WIDTH/FONT_WIDTH;
+	text.rows = GR_HEIGHT/FONT_HEIGHT;
+	text.border_chars[2] (I64)=0x0908070605040302;
+	text.border_chars[10](U32)=0x0D0C0B0A;
+}
 
 U8 *start_up_directory = StrNew(Fs->cur_dir);
 
@@ -35,8 +43,8 @@ if (Bt(&sys_run_level, RLf_RAW)) {
 	UserCmdLine;
 } else {
 	sys_winmgr_task = adam_task; // TODO: this will eventually need to be removed
-	sys_winmgr_task->pix_width = 640;
-	sys_winmgr_task->pix_height = 480;
+	//sys_winmgr_task->pix_width = 640; // do I need this?
+	//sys_winmgr_task->pix_height = 480;
 	
 	DocTermNew;
 	WinVert(2,10);
@@ -60,6 +68,7 @@ if (Bt(&sys_run_level, RLf_RAW)) {
 }
 
 U0 WallPaperSimple(CTask *_task) {
+	RawPrint(0, "TEXT_ROWS %d TEXT_COLS %d\n", TEXT_ROWS, TEXT_COLS);
 	I64 l=TEXT_ROWS-1;
 	_task->text_attr=BLUE<<4+WHITE;
 	TextPrint(Fs, 0, l--, BLUE<<4+WHITE, "Hello Mr. God");
