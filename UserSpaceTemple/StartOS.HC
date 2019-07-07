@@ -38,6 +38,7 @@ if (Bt(&sys_run_level, RLf_RAW)) {
 	WinVert(2,10);
 	LBts(&Fs->display_flags,DISPLAYf_SHOW);
 	RegInit;
+	/*
 	LBts(&sys_run_level,RLf_REGISTRY);
 	if (!ins_reg.registered)
 	  InsUnreg;
@@ -50,7 +51,7 @@ if (Bt(&sys_run_level, RLf_RAW)) {
 	Option(OPTf_WARN_PAREN,OFF);
 	Option(OPTf_WARN_DUP_TYPES,OFF);
 	LBts(&sys_run_level,RLf_HOME);
-	
+	*/
 	//#help_index ""
 	//#include "~/MakeHome"
 }

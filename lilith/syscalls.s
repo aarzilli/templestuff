@@ -87,6 +87,20 @@ asm_syscall_RedSeaFilesFind:
 	ret $0x18
 
 	.text
+	.globl asm_syscall_RedSeaFileWrite
+	.type asm_syscall_RedSeaFileWrite, @function
+asm_syscall_RedSeaFileWrite:
+	push_registers_except_rax
+	movq 0x10(%rbp), %rdi
+	movq 0x18(%rbp), %rsi
+	movq 0x20(%rbp), %rdx
+	movq 0x28(%rbp), %rcx
+	movq 0x30(%rbp), %r8
+	call syscall_RedSeaFileWrite
+	pop_registers_except_rax
+	ret $0x28
+
+	.text
 	.globl asm_syscall_SysTimerRead
 	.type asm_syscall_SysTimerRead, @function
 asm_syscall_SysTimerRead:
@@ -110,6 +124,16 @@ asm_syscall_MHeapCtrl:
 	push_registers_except_rax
 	movq 0x10(%rbp), %rdi
 	call syscall_MHeapCtrl
+	pop_registers_except_rax
+	ret $0x8
+
+	.text
+	.globl asm_syscall_MSize
+	.type asm_syscall_MSize, @function
+asm_syscall_MSize:
+	push_registers_except_rax
+	movq 0x10(%rbp), %rdi
+	call syscall_MSize
 	pop_registers_except_rax
 	ret $0x8
 

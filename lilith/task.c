@@ -533,7 +533,12 @@ void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64
 // trampoline_kernel_patch writes a jump to 'dest' at the entry point of the kernel function named 'name'.
 // the jump in question is an absolute 64bit jump constructed using a PUSH+MOV+RET sequence.
 void trampoline_kernel_patch(char *name, void dest(void)) {
-	uint8_t *x = (uint8_t *)(hash_get(&symbols, name)->val);
+	struct export_t *h = hash_get(&symbols, name);
+	if (h == NULL) {
+		fprintf(stderr, "FATAL: could not patch %s (symbol not found)\n", name);
+		exit(1);
+	}
+	uint8_t *x = (uint8_t *)(h->val);
 	uint64_t d = (uint64_t)dest;
 	if (DEBUG) {
 		printf("patching %p as jump to %lx\n", x, d);

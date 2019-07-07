@@ -19,6 +19,13 @@ void *syscall_MAlloc(uint64_t size, uint64_t mem_task) { // _MALLOC
 		heap = data_heap;
 	}
 	
+	if (size >= 10000000000) {
+		struct templeos_thread t;
+		exit_templeos(&t);
+		print_stack_trace(stdout, t.Fs, t.Fs->rip, t.Fs->rbp, t.Fs->rsp);
+		enter_templeos(&t);
+	}
+	
 	if (USE_GLIBC_MALLOC) {
 		struct templeos_thread t;
 		exit_templeos(&t);
@@ -534,7 +541,7 @@ uint64_t syscall_RedSeaFilesFind(char *files_find_mask, int64_t fuf_flags, struc
 	return (uint64_t)res;
 }
 
-/* int64_t syscall_RedSeaFileWrite(uint64_t dv, char *cur_dir, char *name, char *buf, int64_t size) {
+int64_t syscall_RedSeaFileWrite(uint64_t dv, char *cur_dir, char *name, char *buf, int64_t size) {
 	struct templeos_thread t;
 	exit_templeos(&t);
 	
@@ -579,7 +586,7 @@ uint64_t syscall_RedSeaFilesFind(char *files_find_mask, int64_t fuf_flags, struc
 	
 	enter_templeos(&t);
 	return clus;
-}*/
+}
 
 uint64_t syscall_SysTimerRead(void) {
 	struct templeos_thread t;
@@ -621,6 +628,31 @@ uint64_t syscall_MHeapCtrl(uint8_t *p) { // _MHEAP_CTRL
 		return r;
 	} else {
 		return (uint64_t)stbm_get_heap(p);
+	}
+}
+
+int64_t syscall_MSize(uint8_t *p) { // _MSIZE
+	if (USE_GLIBC_MALLOC) {
+		if (!DEBUG_REGISTER_ALL_ALLOCATIONS) {
+		}
+		
+		struct templeos_thread t;
+		exit_templeos(&t);
+		
+		struct templeos_mem_entry_t *e = get_templeos_memory((uint64_t)p);
+		
+		if (e == NULL) {
+			// can't do this :'(
+			uint64_t *p = NULL;
+			*p = 0;
+		}
+		
+		int64_t r = e->sz;
+		
+		enter_templeos(&t);
+		return r;
+	} else {
+		return (int64_t)stbm_get_allocation_size(p);
 	}
 }
 
