@@ -69,6 +69,104 @@ void kernel_patch_instruction(char *name, off_t off, uint8_t original, uint8_t r
 
 // task.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct CDC {}; // we needn't concer with this class
+
+#define STR_LEN 144
+#define TASK_NAME_LEN 32
+#define TASK_EXCEPT_CALLERS 8
+
+struct CJobCtrl {
+	void *next_waiting, *last_waiting;
+	void *next_done, *last_done;
+	int64_t flags;
+};
+
+struct CWinScroll {
+	int64_t   min,pos,max;
+	uint32_t   flags;
+	uint8_t    color,pad[3];
+};
+
+struct CTask { //The Fs segment reg points to current CTask.
+	struct CTask *addr; //Self-addressed ptr
+	uint32_t   task_signature,win_inhibit;
+	int64_t   wake_jiffy;
+	uint32_t   task_flags,display_flags;
+	
+	uint64_t code_heap, data_heap;
+	
+	struct CDoc  *put_doc,*display_doc, //When double buffering, these two differ.
+	      *border_doc;
+	int64_t   win_left,win_right,win_top,win_bottom;
+	
+	struct CDrv  *cur_dv;
+	uint8_t    *cur_dir;
+	
+	struct CTask *parent_task,
+	      *next_task,*last_task,
+	      *next_input_filter_task,*last_input_filter_task,
+	      *next_sibling_task,*last_sibling_task,
+	      *next_child_task,*last_child_task;
+	
+	//These are derived from left,top,right,bottom
+	int64_t   win_width,win_height,
+	      pix_left,pix_right,pix_width, //These are in pixs, not characters
+	      pix_top,pix_bottom,pix_height,
+	      scroll_x,scroll_y,scroll_z;
+	
+	//These must be in this order
+	//for $LK,"TASK_CONTEXT_SAVE",A="FF:::/Kernel/Sched.HC,TASK_CONTEXT_SAVE"$ and $LK,"_TASK_CONTEXT_RESTORE",A="FF:::/Kernel/Sched.HC,_TASK_CONTEXT_RESTORE"$
+	int64_t   rip,rflags,rsp,rsi,rax,rcx,rdx,rbx,rbp,rdi,
+	      r8,r9,r10,r11,r12,r13,r14,r15;
+	struct CCPU  *gs;
+	struct CFPU  *fpu_mmx;
+	int64_t   swap_cnter;
+	
+	void    (*draw_it)(struct CTask *task, struct CDC *dc);
+	
+	uint8_t    task_title[STR_LEN],
+	      task_name[TASK_NAME_LEN],
+	      wallpaper_data[STR_LEN],
+	
+	      title_src,border_src,
+	      text_attr,border_attr;
+	uint16_t   win_z_num,pad;
+	
+	struct CTaskStk *stk;
+	struct CExcept *next_except,*last_except;
+	int64_t   except_rbp,     //throw routine's RBP
+	      except_ch;      //throw(ch)
+	uint8_t    *except_callers[TASK_EXCEPT_CALLERS];
+	
+	bool  catch_except;
+	bool  new_answer;
+	uint8_t    answer_type, pad2[5];
+	int64_t   answer;
+	double   answer_time;
+	struct CBpt  *bpt_lst;
+	struct CCtrl *next_ctrl,*last_ctrl;
+	struct CMenu *cur_menu;
+	struct CTaskSettings *next_settings;
+	struct CMathODE *next_ode,*last_ode;
+	double   last_ode_time;
+	struct CHashTable *hash_table;
+	
+	struct CJobCtrl srv_ctrl;
+	struct CCmpCtrl *next_cc,*last_cc;
+	struct CHashFun *last_fun;
+	
+	void    (*task_end_cb)();
+	struct CTask *song_task,*animate_task;
+	int64_t   rand_seed,
+	      task_num,
+	      fault_num,fault_err_code;
+	struct CTask *popup_task,
+	      *dbg_task;
+	struct CWinScroll horz_scroll,vert_scroll;
+	
+	int64_t   user_data;
+};
+
 void init_templeos(struct templeos_thread *t, void *stk_base_estimate);
 void enter_templeos(struct templeos_thread *t);
 void exit_templeos(struct templeos_thread *t);
@@ -109,7 +207,7 @@ bool is_hash_type(struct CHash *he, uint64_t type);
 
 void print_templeos_hash_table(FILE *out, struct CTask *task);
 
-void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp, uint64_t rsp);
+int print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp, uint64_t rsp);
 
 // static.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 

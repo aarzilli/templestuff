@@ -331,6 +331,7 @@ void load_kernel(void) {
 	kernel_patch_instruction("JobsHndlr", 0x2b, 0xfa, 0x90);
 	kernel_patch_instruction("HashTablePurge", 0x26, 0xfa, 0x90);
 	kernel_patch_instruction("_HASH_REM_DEL", 0x2c, 0xfa, 0x90);
+	kernel_patch_instruction("RawPrint", 0x32, 0xfa, 0x90);
 	
 	setup_syscall_trampolines();
 	

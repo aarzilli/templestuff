@@ -534,7 +534,7 @@ uint64_t syscall_RedSeaFilesFind(char *files_find_mask, int64_t fuf_flags, struc
 	return (uint64_t)res;
 }
 
-int64_t syscall_RedSeaFileWrite(uint64_t dv, char *cur_dir, char *name, char *buf, int64_t size) {
+int64_t syscall_RedSeaFileWrite(uint64_t dv, char *cur_dir, char *name, char *buf, int64_t size, int64_t date, int64_t attr) {
 	struct templeos_thread t;
 	exit_templeos(&t);
 	
@@ -574,6 +574,8 @@ int64_t syscall_RedSeaFileWrite(uint64_t dv, char *cur_dir, char *name, char *bu
 			clus = intern_path(p);
 		}
 	}
+	
+	//TODO: do not ignore date and attr
 		
 	free(p);
 	

@@ -52,7 +52,12 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 	uint64_t rsp = ucontext->uc_mcontext.gregs[REG_RSP];
 	
 	fprintf(stderr, "Received signal %d at 0x%lx\n", sig, rip);
-	print_stack_trace(stderr, t.Fs, rip, rbp, rsp);
+	int n = print_stack_trace(stderr, t.Fs, rip, rbp, rsp);
+	
+	if (n == 1) {
+		fprintf(stderr, "\nTracing from last saved frame 0x%lx:\n", t.Fs->rip);
+		print_stack_trace(stderr, t.Fs, t.Fs->rip, t.Fs->rbp, t.Fs->rsp);
+	}
 	
 	fprintf(stderr, "\nRegisters:\n");
 	

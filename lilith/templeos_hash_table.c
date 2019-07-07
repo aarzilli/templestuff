@@ -219,7 +219,7 @@ bool symbolicate_frame(FILE *out, struct CTask *task, uint64_t rip) {
 	return false;
 }
 
-void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp, uint64_t rsp) {
+int print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp, uint64_t rsp) {
 	int count = 0;
 	
 	while ((count < 20) && (rbp != 0)) {
@@ -238,6 +238,7 @@ void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp
 		fprintf(out, "\trip=0x%lx rbp=0x%lx rsp=0x%lx\n", rip, rbp, rsp);
 		
 		if (!is_templeos_memory(rip)) {
+			++count;
 			break;
 		}
 		
@@ -253,6 +254,8 @@ void print_stack_trace(FILE *out, struct CTask *task, uint64_t rip, uint64_t rbp
 		rbp = *((uint64_t *)rbp);
 		++count;
 	}
+	
+	return count;
 }
 
 void print_stack_trace_here(void) {

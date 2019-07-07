@@ -96,9 +96,12 @@ asm_syscall_RedSeaFileWrite:
 	movq 0x20(%rbp), %rdx
 	movq 0x28(%rbp), %rcx
 	movq 0x30(%rbp), %r8
+	movq 0x38(%rbp), %r9
+	pushq 0x40(%rbp)
 	call syscall_RedSeaFileWrite
+	addq $0x8, %rsp
 	pop_registers_except_rax
-	ret $0x28
+	ret $0x38
 
 	.text
 	.globl asm_syscall_SysTimerRead
