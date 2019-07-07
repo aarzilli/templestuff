@@ -543,6 +543,16 @@ void trampoline_kernel_patch(char *name, void dest(void)) {
 	if (DEBUG) {
 		printf("patching %p as jump to %lx\n", x, d);
 	}
+	
+	x[0] = 0xff; // JMP QWORD PTR [RIP+0]
+	x[1] = 0x25;
+	x[2] = 0x00;
+	x[3] = 0x00;
+	x[4] = 0x00;
+	x[5] = 0x00;
+	*((uint64_t *)(x+6)) = d; // jump destination address (absolute)
+	
+	/*
 	x[0] = 0x68; // PUSH <lower 32 bits>
 	*((uint32_t *)(x+1)) = (uint32_t)d;
 	x[5] = 0xc7; // MOV <higher 32 bits>
@@ -551,12 +561,7 @@ void trampoline_kernel_patch(char *name, void dest(void)) {
 	x[8] = 0x04;
 	*((uint32_t *)(x+9)) = (uint32_t)(d>>32);
 	x[13] = 0xc3; // RETx
-	
-	//TODO: switch to 
-	// JMP QWORD PTR [RIP+0]
-	// <bytes of dest>
-	// 0xff 0x25 0x00 0x00 0x00 0x00 (...)
-	// same size but more standard?
+	*/
 }
 
 // malloc_for_templeos returns a chunk of memory of the specified size
