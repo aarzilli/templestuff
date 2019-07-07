@@ -17,13 +17,18 @@ Option(OPTf_WARN_PAREN,ON);
 Option(OPTf_WARN_DUP_TYPES,ON);
 HashTablePurge(adam_task->hash_table);
 
-if (!Bt(&sys_run_level, RLf_RAW)) { // SysGrInit equivalent
+if (!Bt(&sys_run_level, RLf_RAW)) {
+	// SysGrInit equivalent
 	text.font = sys_font_std;
 	text.aux_font = sys_font_cyrillic;
 	text.cols = GR_WIDTH/FONT_WIDTH;
 	text.rows = GR_HEIGHT/FONT_HEIGHT;
 	text.border_chars[2] (I64)=0x0908070605040302;
 	text.border_chars[10](U32)=0x0D0C0B0A;
+	Fs->win_left=1;
+	Fs->win_right = text.cols;
+	Fs->win_top++;
+	Fs->win_bottom = text.rows;
 }
 
 U8 *start_up_directory = StrNew(Fs->cur_dir);
@@ -68,10 +73,8 @@ if (Bt(&sys_run_level, RLf_RAW)) {
 }
 
 U0 WallPaperSimple(CTask *_task) {
-	RawPrint(0, "TEXT_ROWS %d TEXT_COLS %d\n", TEXT_ROWS, TEXT_COLS);
-	I64 l=TEXT_ROWS-1;
 	_task->text_attr=BLUE<<4+WHITE;
-	TextPrint(Fs, 0, l--, BLUE<<4+WHITE, "Hello Mr. God");
+	TextPrint(Fs, 0, 0, BLUE<<4+WHITE, "Hello Mr. God");
 }
 
 /****

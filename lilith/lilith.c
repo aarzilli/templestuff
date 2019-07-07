@@ -82,12 +82,16 @@ void dbg_dc(struct CDC *dc) {
 	if (dc->body != NULL) {
 		for (int i = 0; i < dc->height; i++) {
 			for (int j = 0; j < dc->width; j++) {
-				//printf("%x", dc->body[(i*dc->width_internal) + j]);
+				if (dc->body[(i*dc->width_internal) + j] > 0xf) {
+					printf("B"): // isn't this supposed to be only 4 bits?! wtf?
+				} else {
+					printf("%x", dc->body[(i*dc->width_internal) + j]);
+				}
 				if (dc->body[(i*dc->width_internal) + j] != 0) {
 					++count;
 				}
 			}
-			//printf("\n");
+			printf("\n");
 		}
 	}
 	printf("total %d\n", count);

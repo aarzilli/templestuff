@@ -282,7 +282,7 @@ U0 GrUpdateTextFG()
       dst(U8 *)+=w1*FONT_HEIGHT*j;
     }
   }
-
+  
   for (row=num_rows;row--;) {
     for (col=num_cols;col--;) {
       cur_ch=*src++;
