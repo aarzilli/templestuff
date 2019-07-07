@@ -174,15 +174,13 @@ int main(int argc, char *argv[]) {
 		printf("Initialization Done\n");
 	}
 	
-	uint64_t sys_run_level = RLF_64BIT|RLF_BLKDEV|RLF_COMPILER;
-	
+	uint64_t *sys_run_level_p = kernel_var64_ptr("sys_run_level");
+	*sys_run_level_p = RLF_64BIT|RLF_BLKDEV|RLF_COMPILER;
 	if (!x11_enabled) {
-		sys_run_level |= RLF_RAW;
+		*sys_run_level_p |= RLF_RAW;
 	} else {
-		// TODO: start x11 thread
+		*sys_run_level_p |= RLF_VGA;
 	}
-	
-	kernel_patch_var32("sys_run_level", sys_run_level);
 	
 	if (extension_is(argv[1], ".BIN") || extension_is(argv[1], ".BIN.Z")) {
 		if (IN_GDB) {
@@ -196,6 +194,20 @@ int main(int argc, char *argv[]) {
 		call_templeos3(&t, "Load", (uint64_t)p, LDF_SILENT, INT64_MAX);
 		call_templeos1(&t, "DbgMode", 0);
 		call_templeos2(&t, "ExeFile", (uint64_t)(argv[1]), 0);
+		
+		if (((*sys_run_level_p & RLF_HOME) != 0) && x11_enabled) {
+			printf("blah!\n");
+			//TODO: 
+			// - call wallpaper function once
+			// - GrUpdateTextBG
+			// - GrUpdateTextFG
+			// - GrUpdateTasks (skip this)
+			// - DCBlotColor8
+			// - DCBlotColor4...
+			// - GrUpdateVGAGraphics (probably will need to be replaced)
+		}
+		
+		
 	} else {
 		fprintf(stderr, "Unknown extension %s\n", argv[1]);
 	}

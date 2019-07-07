@@ -372,3 +372,8 @@ void kernel_patch_var64_off(char *name, int off, uint64_t val) {
 void kernel_patch_var32(char *name, uint32_t val) {
 	*((uint32_t *)(hash_get(&symbols, name)->val)) = val;
 }
+
+uint64_t *kernel_var64_ptr(char *name) {
+	return (uint64_t *)(hash_get(&symbols, name)->val);
+}
+

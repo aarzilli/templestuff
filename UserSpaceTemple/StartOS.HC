@@ -51,11 +51,10 @@ if (Bt(&sys_run_level, RLf_RAW)) {
 	if (DrvIsWritable)
 		DirMk("/Tmp"); //Good to have a Tmp
 	
-	/*
 	Option(OPTf_WARN_PAREN,OFF);
 	Option(OPTf_WARN_DUP_TYPES,OFF);
 	LBts(&sys_run_level,RLf_HOME);
-	*/
+
 	//#help_index ""
 	//#include "~/MakeHome"
 }

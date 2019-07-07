@@ -5,42 +5,13 @@ public U8 gr_rainbow_10[10]={
 DefineLstLoad("ST_RAINBOW_10",
   "BLACK\0BROWN\0RED\0LTRED\0YELLOW\0GREEN\0BLUE\0PURPLE\0LTGRAY\0WHITE\0");
 
-U0 GrPaletteIndicesSet()
-{//There is a level of indirection that we identity map.
-// Set 16-colors to use first 16 DAC BGR entries, so we
-// never need to worry about indexes, just DAC palette settings.
-  I64 i;
-  if (!Bt(&sys_run_level,RLf_VGA)) return;
-  PUSHFD
-  CLI
-  while (LBts(&sys_semas[SEMA_VGA],0))
-    Yield;
-  InU8(VGAP_INPUT_STAT); //Rsts attr index/data
-  for (i=0;i<COLORS_NUM;i++) {
-    OutU8(VGAP_ATTR_INDEX,i);
-    OutU8(VGAP_ATTR_DATA_WRITE,i);
-  }
-  OutU8(VGAP_ATTR_INDEX,0x20);
-  OutU8(VGAP_ATTR_DATA_WRITE,0); //Dummy write
-  InU8(VGAP_INPUT_STAT); //Rsts attr index/data
-  LBtr(&sys_semas[SEMA_VGA],0);
-  POPFD
-}
+CBGR48 vga_palette[COLORS_NUM];
 
 public U0 GrPaletteColorSet(I64 color_num,CBGR48 bgr48)
 {//VGA has 6-bits for blue, for green, and for red.
   if (!Bt(&sys_run_level,RLf_VGA)) return;
-  PUSHFD
-  CLI
-  while (LBts(&sys_semas[SEMA_VGA],0))
-    Yield;
-  OutU8(VGAP_PALETTE_MASK,0xFF);
-  OutU8(VGAP_REG_WRITE,color_num);
-  OutU8(VGAP_PALETTE_DATA,bgr48.r>>10);
-  OutU8(VGAP_PALETTE_DATA,bgr48.g>>10);
-  OutU8(VGAP_PALETTE_DATA,bgr48.b>>10);
-  LBtr(&sys_semas[SEMA_VGA],0);
-  POPFD
+  //TODO: acquire lock?
+  vga_palette[color_num] = bgr48;
 }
 
 public CBGR48 GrPaletteColorGet(I64 color_num)

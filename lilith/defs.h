@@ -185,6 +185,7 @@ void trampoline_kernel_patch(char *name, void dest(void));
 void kernel_patch_var32(char *name, uint32_t val);
 void kernel_patch_var64(char *name, uint64_t val);
 void kernel_patch_var64_off(char *name, int off, uint64_t val);
+uint64_t *kernel_var64_ptr(char *name);
 
 void *find_entry_point(struct templeos_thread *t, char *name);
 
