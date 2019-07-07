@@ -211,7 +211,7 @@ U0 WinFinalUpdate(CDC *dc)
     DrawMenu(dc);
   else
     sys_cur_submenu_entry=NULL;
-  DrawMs(dc);
+  //DrawMs(dc); //TODO: what does this even do?
 }
 
 gr.fp_final_scrn_update=&WinFinalUpdate;

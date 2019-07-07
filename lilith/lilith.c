@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
 		x11_display = NULL;
 	}
 	
-	char *x11_enabled_str = getenv("X11_ENABLED");
+	char *x11_enabled_str = getenv("LILITH_X11_ENABLED");
 	x11_enabled = (x11_display != NULL) && (x11_enabled_str != NULL) && (strlen(x11_enabled_str) != 0);
 	
 	/*
@@ -196,18 +196,12 @@ int main(int argc, char *argv[]) {
 		call_templeos2(&t, "ExeFile", (uint64_t)(argv[1]), 0);
 		
 		if (((*sys_run_level_p & RLF_HOME) != 0) && x11_enabled) {
-			printf("blah!\n");
-			//TODO: 
-			// - call wallpaper function once
-			// - GrUpdateTextBG
-			// - GrUpdateTextFG
-			// - GrUpdateTasks (skip this)
-			// - DCBlotColor8
-			// - DCBlotColor4...
-			// - GrUpdateVGAGraphics (probably will need to be replaced)
+			call_templeos1(&t, "WallPaperSimple", (uint64_t)&t); // TODO: should call real WallPaper function
+			call_templeos(&t, "GrUpdateScrn");
+			
+			void *gr = templeos_var64_ptr(t.Fs, "gr");
+			printf("gr is %p\n", gr);
 		}
-		
-		
 	} else {
 		fprintf(stderr, "Unknown extension %s\n", argv[1]);
 	}

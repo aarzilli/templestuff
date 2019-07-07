@@ -29,14 +29,6 @@
 // LDF_KERNEL implies LDF_JUST_LOAD, disables unresolved symbol errors (they will be ignored)
 #define LDF_KERNEL            0x10000
 
-#define HTT_FUN			0x00040 //CHashFun
-#define HTT_MODULE		0x04000 //CHashGeneric
-#define HTT_EXPORT_SYS_SYM      0x00001 //CHashExport
-
-
-#define HTF_IMM                 0x08000000
-#define HTF_PUBLIC		0x01000000
-
 struct hash_t symbols;
 
 // LoadPass1 executes some of the relocations specified in the "patch

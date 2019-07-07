@@ -271,10 +271,24 @@ void print_stack_trace_here(void) {
 		itm = true;
 		exit_templeos(&t);
 	}
-	
+
 	print_stack_trace(stderr, t.Fs, rip, rbp, 0);
 	
 	if (itm) {
 		enter_templeos(&t);
 	}
+}
+
+void *templeos_var64_ptr(struct CTask *task, char *name) {
+	for (struct thiter it = thiter_new(task); thiter_valid(&it); thiter_next(&it)) {
+		if (!is_hash_type(it.he, HTF_PUBLIC|HTT_GLBL_VAR)) {
+			continue;
+		}
+		if (strcmp((char *)(it.he->str), name) != 0) {
+			continue;
+		}
+		struct CHashGlblVar *gv = (struct CHashGlblVar *)(it.he);
+		return (void *)(gv->data_addr);
+	}
+	return NULL;
 }

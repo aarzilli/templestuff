@@ -363,7 +363,7 @@ U0 GrUpdateTextModeText()
   }
 }
 
-U0 GrUpdateVGAGraphics()
+U0 GrUpdateVGAGraphics() // TODO: delete this and the functions this calls
 {//Update Graphic Card
   I64 row,plane,d=gr.zoomed_dc->width_internal>>6;
   U32 *src,*vga,*dst;
@@ -403,7 +403,7 @@ U0 GrUpdateScrn()
   else {
     GrUpdateTextBG;
     GrUpdateTextFG;
-    GrUpdateTasks;
+    //GrUpdateTasks; //TODO: re-enable this!
     DCBlotColor8(gr.dc2,gr.dc);
   }
 
@@ -418,6 +418,6 @@ U0 GrUpdateScrn()
   else {
     DCBlotColor4(gr.dc1->body,gr.dc2->body,gr.dc_cache->body,
 	  gr.dc2->height*gr.dc2->width_internal>>3);
-    GrUpdateVGAGraphics;
+    //GrUpdateVGAGraphics; // done implicitly by lilith
   }
 }

@@ -59,6 +59,12 @@ if (Bt(&sys_run_level, RLf_RAW)) {
 	//#include "~/MakeHome"
 }
 
+U0 WallPaperSimple(CTask *_task) {
+	I64 l=TEXT_ROWS-1;
+	_task->text_attr=BLUE<<4+WHITE;
+	TextPrint(Fs, 0, l--, BLUE<<4+WHITE, "Hello Mr. God");
+}
+
 /****
 //
 
