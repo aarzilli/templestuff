@@ -92,8 +92,10 @@ func funcToSyscall(fnret, fnname, fnargs, fnsuffix string) (s Syscall) {
 		s.hasret = true
 	}
 	
-	if strings.HasSuffix(fnsuffix, "; NOP") {
+	const nopstr = "; NOP"
+	if strings.HasSuffix(fnsuffix, nopstr) {
 		s.isnop = true
+		fnsuffix = fnsuffix[:len(fnsuffix) - len(nopstr)]
 	}
 	
 	switch {

@@ -19,13 +19,6 @@ void *syscall_MAlloc(uint64_t size, uint64_t mem_task) { // _MALLOC
 		heap = data_heap;
 	}
 	
-	if (size >= 10000000000) {
-		struct templeos_thread t;
-		exit_templeos(&t);
-		print_stack_trace(stdout, t.Fs, t.Fs->rip, t.Fs->rbp, t.Fs->rsp);
-		enter_templeos(&t);
-	}
-	
 	if (USE_GLIBC_MALLOC) {
 		struct templeos_thread t;
 		exit_templeos(&t);
@@ -719,3 +712,4 @@ void syscall_Busy(int64_t s) {
 }
 
 //void syscall_TaskDerivedValsUpdate(struct CTask *task, bool update_z_buf); NOP
+//void syscall_Yield(void); // _YIELD; NOP

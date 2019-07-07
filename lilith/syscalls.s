@@ -176,3 +176,10 @@ asm_syscall_TaskDerivedValsUpdate:
 	// don't do anything
 	ret $0x10
 
+	.text
+	.globl asm_syscall_Yield
+	.type asm_syscall_Yield, @function
+asm_syscall_Yield:
+	// don't do anything
+	ret
+

@@ -38,11 +38,10 @@ if (Bt(&sys_run_level, RLf_RAW)) {
 	WinVert(2,10);
 	LBts(&Fs->display_flags,DISPLAYf_SHOW);
 	RegInit;
-	/*
 	LBts(&sys_run_level,RLf_REGISTRY);
 	if (!ins_reg.registered)
 	  InsUnreg;
-	
+	/*
 	WallPaperInit;
 	
 	if (DrvIsWritable)
