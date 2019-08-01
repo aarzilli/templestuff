@@ -527,6 +527,21 @@ pthread_mutex_t thread_create_destruct_mutex = PTHREAD_MUTEX_INITIALIZER;
 void *templeos_task_start(void *arg) {
 	struct templeos_thread_info *ti = (struct templeos_thread_info *)arg;
 	
+	if (arch_prctl(ARCH_GET_GS, (uint64_t)&(ti->t.Gs->glibc_gs)) == -1) {
+		fprintf(stderr, "could not read gs segment: %s\n", strerror(errno));
+		free(ti->t.Fs);
+		free(ti);
+		pthread_exit(NULL);
+		return NULL;
+	}
+	if (arch_prctl(ARCH_GET_FS, (uint64_t)&(ti->t.Gs->glibc_fs)) == -1) {
+		fprintf(stderr, "could not read fs segment: %s\n", strerror(errno));
+		free(ti->t.Fs);
+		free(ti);
+		pthread_exit(NULL);
+		return NULL;
+	}
+	
 	if (DEBUG_TASKS) {
 		pthread_mutex_lock(&thread_create_destruct_mutex);
 		fprintf(stderr, "new task started for %p/%s\n", ti->t.Fs, ti->t.Fs->task_name);
@@ -534,6 +549,7 @@ void *templeos_task_start(void *arg) {
 	}
 	
 	call_templeos2(&ti->t, "TaskInit", (uint64_t)(ti->t.Fs), 0);
+	ti->t.Fs->hash_table->next = ti->t.Fs->parent_task->hash_table;
 	
 	fflush(stdout);
 	fflush(stderr);

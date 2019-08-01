@@ -106,10 +106,13 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 }
 
 struct hash_t paths_table;
+pthread_mutex_t paths_table_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 uint64_t intern_path(char *p) {
+	pthread_mutex_lock(&paths_table_mutex);
 	struct export_t *e = hash_get(&paths_table, p);
 	if (e != NULL) {
+		pthread_mutex_unlock(&paths_table_mutex);
 		return e->val;
 	}
 	e = (struct export_t *)malloc(sizeof(struct export_t));
@@ -117,6 +120,7 @@ uint64_t intern_path(char *p) {
 	e->type = 0;
 	e->val = (uint64_t)(k);
 	hash_put(&paths_table, k, e);
+	pthread_mutex_unlock(&paths_table_mutex);
 	return e->val;
 }
 

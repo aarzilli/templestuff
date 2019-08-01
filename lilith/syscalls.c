@@ -801,26 +801,14 @@ uint64_t syscall_Spawn(uint64_t fp, uint8_t *data, uint8_t *task_name, int64_t t
 	struct templeos_thread_info *ti = malloc(sizeof(struct templeos_thread_info));
 	
 	ti->t.Fs = task;
-	ti->t.Gs = task->gs;
+	
+	ti->t.Gs = (struct CCPU *)calloc(1, sizeof(struct CCPU));
+	ti->t.Gs->addr = ti->t.Gs;
+	
 	ti->fp = (void (*)(uint8_t *))fp;
 	ti->data = data;
 	ti->stk_size = stk_size;
-	
-	if (arch_prctl(ARCH_GET_GS, (uint64_t)&(ti->t.Gs->glibc_gs)) == -1) {
-		fprintf(stderr, "could not read gs segment: %s\n", strerror(errno));
-		free(ti);
-		free_for_templeos(task);
-		task = NULL;
-		goto syscall_Spawn_finish;
-	}
-	if (arch_prctl(ARCH_GET_FS, (uint64_t)&(ti->t.Gs->glibc_fs)) == -1) {
-		fprintf(stderr, "could not read fs segment: %s\n", strerror(errno));
-		free(ti);
-		free_for_templeos(task);
-		task = NULL;
-		goto syscall_Spawn_finish;
-	}
-	
+		
 	//TODO: add to task list
 	
 	if (pthread_create(&ti->thread_id, &attr, templeos_task_start, ti) != 0) {
