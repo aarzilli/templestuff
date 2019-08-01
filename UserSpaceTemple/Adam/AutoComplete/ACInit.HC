@@ -98,8 +98,10 @@ U0 ACMainFileLstTraverse(U8 *files_find_mask)
     tmpde=tmpde1=FilesFind(files_find_mask,
 	  FUF_RECURSE|FUF_JUST_TXT|FUF_JUST_FILES|FUF_CLUS_ORDER);
     while (tmpde) {
-      "%s\n",tmpde->full_name;
+      //"%s\n",tmpde->full_name;
+      RawPrint(0, "Reading %s\n", tmpde->full_name);
       buf=FileRead(tmpde->full_name);
+      RawPrint(0, "Result of file read on %s is %x\n", tmpde->full_name, buf);
       ACSingleFileAdd(buf);
       Free(buf);
       tmpde=tmpde->next;

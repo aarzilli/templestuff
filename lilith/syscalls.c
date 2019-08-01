@@ -425,7 +425,7 @@ struct CDirEntry *filesfind(char *dir, int ignore, char *files_find_mask, int64_
 		return res;
 	}
 	
-	char *dir_with_drive = fileconcat(DRIVE_ROOT_PATH, dir+ignore+1, false);
+	char *dir_with_drive = fileconcat(DRIVE_ROOT_PATH, dir+ignore, false);
 	
 	for(;;) {
 		struct dirent *ent = readdir(d);
@@ -511,7 +511,7 @@ uint64_t syscall_RedSeaFilesFind(char *files_find_mask, int64_t fuf_flags, struc
 			res = filesfind(templeos_root, strlen(templeos_root), files_find_mask, fuf_flags, parent, res);
 		}
 		
-		res = filesfind("/", 0, files_find_mask, fuf_flags, parent, res);
+		res = filesfind("/", 1, files_find_mask, fuf_flags, parent, res);
 	} else {
 		bool done = false;
 		if (templeos_root != NULL) {
@@ -520,12 +520,12 @@ uint64_t syscall_RedSeaFilesFind(char *files_find_mask, int64_t fuf_flags, struc
 			memset(&statbuf, 0, sizeof(struct stat));
 			if (stat(p, &statbuf) == 0) {
 				done = true;
-				res = filesfind(p, strlen(templeos_root), files_find_mask, fuf_flags, parent, res);
+				res = filesfind(p, strlen(templeos_root)+1, files_find_mask, fuf_flags, parent, res);
 			}
 		}
 		
 		if (!done) {
-			res = filesfind((char *)t.Fs->cur_dir, 0, files_find_mask, fuf_flags, parent, res);
+			res = filesfind((char *)t.Fs->cur_dir, 1, files_find_mask, fuf_flags, parent, res);
 		}
 	}
 	
