@@ -53,6 +53,16 @@ if (Bt(&sys_run_level, RLf_RAW)) {
 	
 	DocTermNew;
 	WinVert(2,10);
+	
+	{ // from WinMgrTask
+		WinHorz(0,TEXT_COLS-1);
+		WinVert(0,TEXT_ROWS-1);
+		LBts(&Fs->display_flags,DISPLAYf_NO_BORDER);
+		LBts(&Fs->display_flags,DISPLAYf_SHOW);
+		gr.dc->win_task=Fs;
+		Fs->win_inhibit&=~WIF_SELF_CTRLS;
+		GrSetUpTables;
+	}
 	LBts(&Fs->display_flags,DISPLAYf_SHOW);
 	RegInit;
 	LBts(&sys_run_level,RLf_REGISTRY);

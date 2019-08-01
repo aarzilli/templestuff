@@ -71,8 +71,8 @@ U0 GrSetUpTables()
     MemSet(text.vga_text_alias,0,TEXT_ROWS*TEXT_COLS*sizeof(U16));
     MemSet(gr.vga_text_cache,0,TEXT_ROWS*TEXT_COLS*sizeof(U16));
   } else {
-    OutU8(VGAP_IDX,VGAR_MAP_MASK);
-    OutU8(VGAP_DATA,0x0F);
+    //OutU8(VGAP_IDX,VGAR_MAP_MASK);
+    //OutU8(VGAP_DATA,0x0F);
 //Virtual Box crashes on the following for some reason.
     //	  MemSet(text.vga_alias,0,GR_HEIGHT*GR_WIDTH>>3);
     MemSet(gr.scrn_image->body,0,GR_WIDTH*GR_HEIGHT>>1);

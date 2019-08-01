@@ -77,15 +77,38 @@ char *templeos_root = NULL;
 
 #define USER_SPACE_TEMPLE "/UserSpaceTemple/"
 
-void dbg_dc(struct CDC *dc) {
+void dbg_dc(struct CDC *dc, uint32_t *text_base) {
+	/*
+	if (text_base != NULL) {
+		int text_rows = 60;
+		int text_cols = 80;
+		
+		for (int i = 0; i < text_rows; ++i) {
+			for (int j = 0; j < text_cols; ++j) {
+				uint32_t c = text_base[i*text_cols + j];
+				if (c == 0) {
+					printf(" ");
+				} else {
+					printf("%c", (char)c);
+				}
+			}
+			printf("\n");
+		}
+	}*/
 	int count = 0;
 	if (dc->body != NULL) {
 		for (int i = 0; i < dc->height; i++) {
-			for (int j = 0; j < dc->width; j++) {
+			for (int j = 0; j < /*dc->width*/ 140; j++) {
+				/*
 				if (dc->body[(i*dc->width_internal) + j] > 0xf) {
-					printf("B"): // isn't this supposed to be only 4 bits?! wtf?
+					printf("B"); // isn't this supposed to be only 4 bits?! wtf?
 				} else {
 					printf("%x", dc->body[(i*dc->width_internal) + j]);
+				}*/
+				if (dc->body[(i*dc->width_internal) + j] > 1) {
+					printf("#");
+				} else {
+					printf(" ");
 				}
 				if (dc->body[(i*dc->width_internal) + j] != 0) {
 					++count;
@@ -223,7 +246,7 @@ int main(int argc, char *argv[]) {
 			printf("gr is %p\n", gr);
 			printf("zoom %ld\n", gr->scrn_zoom);
 			printf("height %d internal_width %d\n", gr->dc1->height, gr->dc1->width_internal);
-			dbg_dc(gr->dc1);
+			dbg_dc(gr->dc2, gr->text_base);
 			//dc1->width dc1->height dc1->width_internal (aligned) dc1->body contents 1 byte per pixel (palette index?)
 		}
 	} else {
