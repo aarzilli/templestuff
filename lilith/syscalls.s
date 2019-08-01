@@ -26,14 +26,6 @@ asm_syscall_JobsHndlr:
 	ret $0x8
 
 	.text
-	.globl asm_syscall_KbdTypeMatic
-	.type asm_syscall_KbdTypeMatic, @function
-asm_syscall_KbdTypeMatic:
-	// don't do anything
-	movq $0, %rax
-	ret $0x8
-
-	.text
 	.globl asm_syscall_MAlloc
 	.type asm_syscall_MAlloc, @function
 asm_syscall_MAlloc:
@@ -206,4 +198,52 @@ asm_syscall_TaskDerivedValsUpdate:
 asm_syscall_Yield:
 	// don't do anything
 	ret
+
+	.text
+	.globl asm_syscall_KbdTypeMatic
+	.type asm_syscall_KbdTypeMatic, @function
+asm_syscall_KbdTypeMatic:
+	// don't do anything
+	movq $0, %rax
+	ret $0x8
+
+	.text
+	.globl asm_syscall_Spawn
+	.type asm_syscall_Spawn, @function
+asm_syscall_Spawn:
+	push_registers_except_rax
+	movq 0x10(%rbp), %rdi
+	movq 0x18(%rbp), %rsi
+	movq 0x20(%rbp), %rdx
+	movq 0x28(%rbp), %rcx
+	movq 0x30(%rbp), %r8
+	movq 0x38(%rbp), %r9
+	pushq 0x40(%rbp)
+	call syscall_Spawn
+	addq $0x8, %rsp
+	pop_registers_except_rax
+	ret $0x38
+
+	.text
+	.globl asm_syscall_TaskStkNew
+	.type asm_syscall_TaskStkNew, @function
+asm_syscall_TaskStkNew:
+	push_registers_except_rax
+	movq 0x10(%rbp), %rdi
+	movq 0x18(%rbp), %rsi
+	call syscall_TaskStkNew
+	pop_registers_except_rax
+	ret $0x10
+
+	.text
+	.globl asm_syscall_CallStkGrow
+	.type asm_syscall_CallStkGrow, @function
+asm_syscall_CallStkGrow:
+	push_registers_except_rax
+	movq 0x10(%rbp), %rdi
+	movq 0x18(%rbp), %rsi
+	movq 0x20(%rbp), %rdx
+	call syscall_CallStkGrow
+	pop_registers_except_rax
+	ret $0x18
 

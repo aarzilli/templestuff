@@ -61,11 +61,27 @@ struct templeos_thread {
 	struct CTask *Fs;
 };
 
+struct templeos_thread_info {
+	pthread_t thread_id;
+	
+	struct templeos_thread t;
+	
+	void (*fp)(uint8_t *);
+	uint8_t *data;
+	uint64_t stk_size;
+};
+
 void load_pass1(uint8_t *patch_table, uint8_t *module_base);
 void load_one_import(uint8_t **patch_table, uint8_t *module_base, int64_t ld_flags);
 struct export_t *symbols_put(char *key, uint32_t type, uint64_t val, void *module_base);
 void load_kernel(void);
+
 void kernel_patch_instruction(char *name, off_t off, uint8_t original, uint8_t replacement);
+void trampoline_kernel_patch(char *name, void dest(void));
+void kernel_patch_var32(char *name, uint32_t val);
+void kernel_patch_var64(char *name, uint64_t val);
+void kernel_patch_var64_off(char *name, int off, uint64_t val);
+uint64_t *kernel_var64_ptr(char *name);
 
 // task.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -73,6 +89,7 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate);
 void enter_templeos(struct templeos_thread *t);
 void exit_templeos(struct templeos_thread *t);
 
+void *find_entry_point(struct templeos_thread *t, char *name);
 uint64_t call_templeos(struct templeos_thread *t, char *name);
 uint64_t call_templeos2(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2);
 void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3);
@@ -83,13 +100,9 @@ void register_templeos_memory(void *p, size_t sz, bool is_mmapped);
 struct templeos_mem_entry_t *get_templeos_memory(uint64_t p);
 bool is_templeos_memory(uint64_t p);
 
-void trampoline_kernel_patch(char *name, void dest(void));
-void kernel_patch_var32(char *name, uint32_t val);
-void kernel_patch_var64(char *name, uint64_t val);
-void kernel_patch_var64_off(char *name, int off, uint64_t val);
-uint64_t *kernel_var64_ptr(char *name);
+extern pthread_mutex_t thread_create_destruct_mutex;
 
-void *find_entry_point(struct templeos_thread *t, char *name);
+void *templeos_task_start(void *arg);
 
 // templeos_hash_table.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -106,8 +106,9 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Gs->addr = t->Gs;
 	t->Fs = (struct CTask *)calloc(1, sizeof(struct CTask));
 	t->Fs->addr = t->Fs;
+	t->Fs->next_task = t->Fs->last_task = t->Fs->next_input_filter_task = t->Fs->last_input_filter_task = t->Fs;
 	t->Fs->gs = t->Gs;
-	t->Fs->task_signature = 0x536b7354; //TskS
+	t->Fs->task_signature = TASK_SIGNATURE;
 	
 	t->Fs->data_heap = (uint64_t)data_heap;
 	t->Fs->code_heap = (uint64_t)code_heap;
@@ -160,6 +161,8 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Fs->stk = malloc_for_templeos(sizeof(struct CTaskStk), data_heap, true);
 	t->Fs->stk->stk_base = stk_base_estimate;
 	t->Fs->stk->stk_size = 4 * 1024 * 1024;
+	
+	strcpy((char *)t->Fs->task_name, "ADAM");
 	
 	if (arch_prctl(ARCH_GET_GS, (uint64_t)&(t->Gs->glibc_gs)) == -1) {
 		fprintf(stderr, "could not read gs segment: %s\n", strerror(errno));
@@ -432,40 +435,6 @@ void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64
 	exit_templeos(t);
 }
 
-// trampoline_kernel_patch writes a jump to 'dest' at the entry point of the kernel function named 'name'.
-// the jump in question is an absolute 64bit jump constructed using a PUSH+MOV+RET sequence.
-void trampoline_kernel_patch(char *name, void dest(void)) {
-	struct export_t *h = hash_get(&symbols, name);
-	if (h == NULL) {
-		fprintf(stderr, "FATAL: could not patch %s (symbol not found)\n", name);
-		exit(1);
-	}
-	uint8_t *x = (uint8_t *)(h->val);
-	uint64_t d = (uint64_t)dest;
-	if (DEBUG) {
-		printf("patching %p as jump to %lx\n", x, d);
-	}
-	
-	x[0] = 0xff; // JMP QWORD PTR [RIP+0]
-	x[1] = 0x25;
-	x[2] = 0x00;
-	x[3] = 0x00;
-	x[4] = 0x00;
-	x[5] = 0x00;
-	*((uint64_t *)(x+6)) = d; // jump destination address (absolute)
-	
-	/*
-	x[0] = 0x68; // PUSH <lower 32 bits>
-	*((uint32_t *)(x+1)) = (uint32_t)d;
-	x[5] = 0xc7; // MOV <higher 32 bits>
-	x[6] = 0x44;
-	x[7] = 0x24;
-	x[8] = 0x04;
-	*((uint32_t *)(x+9)) = (uint32_t)(d>>32);
-	x[13] = 0xc3; // RETx
-	*/
-}
-
 // malloc_for_templeos returns a chunk of memory of the specified size
 // allocated for TempleOS (TempleOS will be able to call Free on it).
 void *malloc_for_templeos(uint64_t size, stbm_heap *heap, bool zero) {
@@ -553,3 +522,31 @@ void free_for_templeos(void *p) {
 	}
 }
 
+pthread_mutex_t thread_create_destruct_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void *templeos_task_start(void *arg) {
+	struct templeos_thread_info *ti = (struct templeos_thread_info *)arg;
+	
+	if (DEBUG_TASKS) {
+		pthread_mutex_lock(&thread_create_destruct_mutex);
+		fprintf(stderr, "new task started for %p/%s\n", ti->t.Fs, ti->t.Fs->task_name);
+		pthread_mutex_unlock(&thread_create_destruct_mutex);
+	}
+	
+	call_templeos2(&ti->t, "TaskInit", (uint64_t)(ti->t.Fs), 0);
+	
+	fflush(stdout);
+	fflush(stderr);
+	
+	enter_templeos(&ti->t);
+	call_templeos1_asm(ti->fp, (uint64_t)ti->data);
+	exit_templeos(&ti->t);
+	
+	if (DEBUG_TASKS) {
+		pthread_mutex_lock(&thread_create_destruct_mutex);
+		fprintf(stderr, "task finished %p/%s\n", ti->t.Fs, ti->t.Fs->task_name);
+		pthread_mutex_unlock(&thread_create_destruct_mutex);
+	}
+	
+	return NULL;
+}

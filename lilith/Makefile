@@ -7,7 +7,7 @@ clean:
 # related stuff, hence it must be disabled.
 
 lilith: *.c *.s
-	gcc -g -mno-red-zone -o lilith -fno-stack-protector -Wall lilith.c lilith.s
+	gcc -g -mno-red-zone -o lilith -fno-stack-protector -Wall lilith.c lilith.s -lpthread 
 
 generate_static:
 	go run scripts/generate.go

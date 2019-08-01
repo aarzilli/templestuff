@@ -12,7 +12,6 @@ void syscall_RawPutChar(uint64_t c) {
 
 //uint64_t syscall_DrvLock(uint64_t); NOP
 //uint64_t syscall_JobsHndlr(uint64_t); NOP
-//uint64_t syscall_KbdTypeMatic(uint64_t); NOP
 
 void *syscall_MAlloc(uint64_t size, uint64_t mem_task) { // _MALLOC
 	stbm_heap *heap = (stbm_heap*)mem_task;
@@ -423,7 +422,6 @@ bool filesfindmatch(char *full_name, char *files_find_mask, int64_t fuf_flags) {
 struct CDirEntry *filesfind(char *dir, int ignore, char *files_find_mask, int64_t fuf_flags, struct CDirEntry *parent, struct CDirEntry *res) {
 	DIR *d = opendir(dir);
 	if (d == NULL) {
-		printf("unopenable\n");
 		return res;
 	}
 	
@@ -748,3 +746,106 @@ void syscall_Busy(int64_t s) {
 
 //void syscall_TaskDerivedValsUpdate(struct CTask *task, bool update_z_buf); NOP
 //void syscall_Yield(void); // _YIELD; NOP
+//uint64_t syscall_KbdTypeMatic(uint64_t); NOP
+
+uint64_t syscall_Spawn(uint64_t fp, uint8_t *data, uint8_t *task_name, int64_t task_cpu, struct CTask *parent, int64_t stk_size, int64_t flags) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	
+	struct CTask *task = malloc_for_templeos(sizeof(struct CTask), data_heap, true);
+	
+	task->task_signature = TASK_SIGNATURE;
+	if (task_name == NULL) {
+		task_name = (uint8_t *)"Unnamed Task";
+	}
+	if (parent == NULL) {
+		parent = adam_task;
+	}
+	task->parent_task = parent;
+	task->gs = parent->gs;
+	task->code_heap = adam_task->code_heap;
+	task->data_heap = adam_task->data_heap;
+	
+	strncpy((char *)task->task_name, (char *)task_name, TASK_NAME_LEN);
+	task->task_name[TASK_NAME_LEN-1] = 0;
+	strcpy((char *)task->task_title, (char *)task->task_name);
+	task->title_src = TTS_TASK_NAME;
+	
+	pthread_attr_t attr;
+	
+	if (pthread_attr_init(&attr) != 0) {
+		fprintf(stderr, "could not set thread attrs (init): %s\n", strerror(errno));
+		free_for_templeos(task);
+		task = NULL;
+		goto syscall_Spawn_finish;
+	}
+	
+	if (stk_size <= 0) {
+		stk_size = 512*(1<<9);
+	}
+	
+	if (pthread_attr_setstacksize(&attr, stk_size+32) != 0) {
+		fprintf(stderr, "could not set thread attrs (stack size): %s\n", strerror(errno));
+		free_for_templeos(task);
+		task = NULL;
+		goto syscall_Spawn_finish;
+	}
+	
+	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0) {
+		fprintf(stderr, "could not set thread attrs (detached): %s\n", strerror(errno));
+		free_for_templeos(task);
+		task = NULL;
+		goto syscall_Spawn_finish;
+	}
+	
+	struct templeos_thread_info *ti = malloc(sizeof(struct templeos_thread_info));
+	
+	ti->t.Fs = task;
+	ti->t.Gs = task->gs;
+	ti->fp = (void (*)(uint8_t *))fp;
+	ti->data = data;
+	ti->stk_size = stk_size;
+	
+	if (arch_prctl(ARCH_GET_GS, (uint64_t)&(ti->t.Gs->glibc_gs)) == -1) {
+		fprintf(stderr, "could not read gs segment: %s\n", strerror(errno));
+		free(ti);
+		free_for_templeos(task);
+		task = NULL;
+		goto syscall_Spawn_finish;
+	}
+	if (arch_prctl(ARCH_GET_FS, (uint64_t)&(ti->t.Gs->glibc_fs)) == -1) {
+		fprintf(stderr, "could not read fs segment: %s\n", strerror(errno));
+		free(ti);
+		free_for_templeos(task);
+		task = NULL;
+		goto syscall_Spawn_finish;
+	}
+	
+	//TODO: add to task list
+	
+	if (pthread_create(&ti->thread_id, &attr, templeos_task_start, ti) != 0) {
+		fprintf(stderr, "could not create thread: %s\n", strerror(errno));
+		free_for_templeos(task);
+		task = NULL;
+		goto syscall_Spawn_finish;
+	}
+	
+	pthread_attr_destroy(&attr);
+	
+syscall_Spawn_finish:	
+	enter_templeos(&t);
+	return (uint64_t)task;
+}
+
+uint64_t syscall_TaskStkNew(int64_t stk_size, struct CTask *task) {
+	// This breaks CallStkGrow but it wouldn't work anyway...
+	return 0;
+}
+
+uint64_t syscall_CallStkGrow(int64_t stk_size_threshold, int64_t stk_size, uint64_t fp) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	
+	fprintf(stderr, "thread %p/%s called CallStkGrow\n", t.Fs, t.Fs->task_name);
+	pthread_exit(NULL);
+}

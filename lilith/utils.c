@@ -51,7 +51,14 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 	uint64_t rbp = ucontext->uc_mcontext.gregs[REG_RBP];
 	uint64_t rsp = ucontext->uc_mcontext.gregs[REG_RSP];
 	
-	fprintf(stderr, "Received signal %d at 0x%lx\n", sig, rip);
+	char *task_name = "???";
+	if (t.Fs->task_signature == TASK_SIGNATURE) {
+		task_name = (char *)t.Fs->task_name;
+	}
+	
+	pthread_mutex_lock(&thread_create_destruct_mutex);
+	
+	fprintf(stderr, "Task %p/%s:\nReceived signal %d at 0x%lx\n", t.Fs, task_name, sig, rip);
 	int n = print_stack_trace(stderr, t.Fs, rip, rbp, rsp);
 	
 	if (n == 1) {
@@ -85,6 +92,16 @@ void signal_handler(int sig, siginfo_t *info, void *ucontext_void) {
 	}
 	
 	fflush(stderr);
+	
+	
+	if ((t.Fs->task_signature == TASK_SIGNATURE) && (t.Fs != adam_task)) {
+		//TODO: remove from list
+		pthread_mutex_unlock(&thread_create_destruct_mutex);
+		pthread_exit(NULL);
+		return;
+	}
+	
+	pthread_mutex_unlock(&thread_create_destruct_mutex);
 	_exit(EXIT_FAILURE);
 }
 

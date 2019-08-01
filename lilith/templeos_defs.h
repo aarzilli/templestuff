@@ -1,3 +1,5 @@
+#define TASK_SIGNATURE 0x536b7354  //TskS
+
 #define HTT_FUN			0x00040 //CHashFun
 #define HTT_MODULE		0x04000 //CHashGeneric
 #define HTT_EXPORT_SYS_SYM    0x00001 //CHashExport
@@ -300,3 +302,5 @@ struct CDC {
   int32_t	*depth_buf;
   int64_t	db_z; //private
 };
+
+#define TTS_TASK_NAME		2

@@ -2,7 +2,6 @@
 extern void asm_syscall_RawPutChar(void);
 extern void asm_syscall_DrvLock(void);
 extern void asm_syscall_JobsHndlr(void);
-extern void asm_syscall_KbdTypeMatic(void);
 extern void asm_syscall_MAlloc(void);
 extern void asm_syscall_Free(void);
 extern void asm_syscall_RedSeaFileFind(void);
@@ -19,11 +18,14 @@ extern void asm_syscall_GetS(void);
 extern void asm_syscall_Busy(void);
 extern void asm_syscall_TaskDerivedValsUpdate(void);
 extern void asm_syscall_Yield(void);
+extern void asm_syscall_KbdTypeMatic(void);
+extern void asm_syscall_Spawn(void);
+extern void asm_syscall_TaskStkNew(void);
+extern void asm_syscall_CallStkGrow(void);
 void setup_syscall_trampolines(void) {
 	trampoline_kernel_patch("RawPutChar", &asm_syscall_RawPutChar);
 	trampoline_kernel_patch("DrvLock", &asm_syscall_DrvLock);
 	trampoline_kernel_patch("JobsHndlr", &asm_syscall_JobsHndlr);
-	trampoline_kernel_patch("KbdTypeMatic", &asm_syscall_KbdTypeMatic);
 	trampoline_kernel_patch("_MALLOC", &asm_syscall_MAlloc);
 	trampoline_kernel_patch("_FREE", &asm_syscall_Free);
 	trampoline_kernel_patch("RedSeaFileFind", &asm_syscall_RedSeaFileFind);
@@ -40,4 +42,8 @@ void setup_syscall_trampolines(void) {
 	trampoline_kernel_patch("Busy", &asm_syscall_Busy);
 	trampoline_kernel_patch("TaskDerivedValsUpdate", &asm_syscall_TaskDerivedValsUpdate);
 	trampoline_kernel_patch("_YIELD", &asm_syscall_Yield);
+	trampoline_kernel_patch("KbdTypeMatic", &asm_syscall_KbdTypeMatic);
+	trampoline_kernel_patch("Spawn", &asm_syscall_Spawn);
+	trampoline_kernel_patch("TaskStkNew", &asm_syscall_TaskStkNew);
+	trampoline_kernel_patch("CallStkGrow", &asm_syscall_CallStkGrow);
 }

@@ -369,3 +369,36 @@ uint64_t *kernel_var64_ptr(char *name) {
 	return (uint64_t *)(hash_get(&symbols, name)->val);
 }
 
+// trampoline_kernel_patch writes a jump to 'dest' at the entry point of the kernel function named 'name'.
+// the jump in question is an absolute 64bit jump constructed using a PUSH+MOV+RET sequence.
+void trampoline_kernel_patch(char *name, void dest(void)) {
+	struct export_t *h = hash_get(&symbols, name);
+	if (h == NULL) {
+		fprintf(stderr, "FATAL: could not patch %s (symbol not found)\n", name);
+		exit(1);
+	}
+	uint8_t *x = (uint8_t *)(h->val);
+	uint64_t d = (uint64_t)dest;
+	if (DEBUG) {
+		printf("patching %p as jump to %lx\n", x, d);
+	}
+	
+	x[0] = 0xff; // JMP QWORD PTR [RIP+0]
+	x[1] = 0x25;
+	x[2] = 0x00;
+	x[3] = 0x00;
+	x[4] = 0x00;
+	x[5] = 0x00;
+	*((uint64_t *)(x+6)) = d; // jump destination address (absolute)
+	
+	/*
+	x[0] = 0x68; // PUSH <lower 32 bits>
+	*((uint32_t *)(x+1)) = (uint32_t)d;
+	x[5] = 0xc7; // MOV <higher 32 bits>
+	x[6] = 0x44;
+	x[7] = 0x24;
+	x[8] = 0x04;
+	*((uint32_t *)(x+9)) = (uint32_t)(d>>32);
+	x[13] = 0xc3; // RETx
+	*/
+}

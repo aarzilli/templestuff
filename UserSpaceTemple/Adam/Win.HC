@@ -374,16 +374,16 @@ public Bool WinHorz(I64 left,I64 right,CTask *task=NULL)
     else
       left=right;
   }
-  PUSHFD
-  CLI //TODO Multiprocessor safe
+  //PUSHFD
+  //CLI //TODO Multiprocessor safe
   if (task->win_left!=left || task->win_right!=right) {
     task->win_left=left;
     task->win_right=right;
     TaskDerivedValsUpdate(task);
-    POPFD
+    //POPFD
     return TRUE;
   } else {
-    POPFD
+    //POPFD
     return FALSE;
   }
 }
@@ -466,8 +466,8 @@ public U0 WinTileVert()
 {//Tile windows vertically side-by-side.
   CTask *task,*last_task=Fs;
   I64 cnt,c,i,horz_size,no_border;
-  PUSHFD
-  CLI //TODO Multiprocessor safe
+  //PUSHFD
+  //CLI //TODO Multiprocessor safe
   task=sys_winmgr_task;
   cnt=0;
   do {
@@ -497,7 +497,7 @@ public U0 WinTileVert()
     task=task->last_task;
   } while (task!=sys_winmgr_task);
   WinHorz(last_task->win_left,TEXT_COLS-2,last_task);
-  POPFD
+  //POPFD
 }
 
 public U0 WinMax(CTask *task=NULL)

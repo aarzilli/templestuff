@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <time.h>
+#include <pthread.h>
 
 #define DEBUG false
 #define DEBUG_LOAD_PASS1 false
@@ -26,6 +27,8 @@
 #define DEBUG_ALLOC false
 #define DEBUG_PRINT_TEMPLEOS_SYMBOL_TABLE_ON_SIGNAL false
 #define DEBUG_REGISTER_ALL_ALLOCATIONS false
+#define DEBUG_TASKS true
+
 #define IN_GDB false
 #define TEMPLEOS_ENTER_EXIT_CHECKS false // do extra checks on entry and exit from TempleOS tasks
 #define USE_GLIBC_MALLOC false
@@ -39,6 +42,7 @@ char DRIVE_ROOT_PATH[] = { DRIVE_LETTER, ':', '\0' };
 char *templeos_root = NULL;
 
 #include "defs.h"
+struct CTask *adam_task = NULL;
 #include "static.c"
 #include "utils.c"
 #include "load.c"
@@ -170,6 +174,7 @@ int main(int argc, char *argv[]) {
 	struct templeos_thread t;
 	init_templeos(&t, &argc);
 	
+	adam_task = t.Fs;
 	kernel_patch_var64("adam_task", (uint64_t)(t.Fs));
 	
 	t.Fs->hash_table = (struct CHashTable *)call_templeos2(&t, "HashTableNew", TASK_HASH_TABLE_SIZE, 0);
