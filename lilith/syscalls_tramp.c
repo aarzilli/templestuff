@@ -2,6 +2,7 @@
 extern void asm_syscall_RawPutChar(void);
 extern void asm_syscall_DrvLock(void);
 extern void asm_syscall_JobsHndlr(void);
+extern void asm_syscall_KbdTypeMatic(void);
 extern void asm_syscall_MAlloc(void);
 extern void asm_syscall_Free(void);
 extern void asm_syscall_RedSeaFileFind(void);
@@ -22,6 +23,7 @@ void setup_syscall_trampolines(void) {
 	trampoline_kernel_patch("RawPutChar", &asm_syscall_RawPutChar);
 	trampoline_kernel_patch("DrvLock", &asm_syscall_DrvLock);
 	trampoline_kernel_patch("JobsHndlr", &asm_syscall_JobsHndlr);
+	trampoline_kernel_patch("KbdTypeMatic", &asm_syscall_KbdTypeMatic);
 	trampoline_kernel_patch("_MALLOC", &asm_syscall_MAlloc);
 	trampoline_kernel_patch("_FREE", &asm_syscall_Free);
 	trampoline_kernel_patch("RedSeaFileFind", &asm_syscall_RedSeaFileFind);

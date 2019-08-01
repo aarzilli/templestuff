@@ -22,7 +22,7 @@
 
 #define DEBUG false
 #define DEBUG_LOAD_PASS1 false
-#define DEBUG_FILE_SYSTEM false 
+#define DEBUG_FILE_SYSTEM false
 #define DEBUG_ALLOC false
 #define DEBUG_PRINT_TEMPLEOS_SYMBOL_TABLE_ON_SIGNAL false
 #define DEBUG_REGISTER_ALL_ALLOCATIONS false
@@ -98,7 +98,7 @@ void dbg_dc(struct CDC *dc, uint32_t *text_base) {
 	int count = 0;
 	if (dc->body != NULL) {
 		for (int i = 0; i < dc->height; i++) {
-			for (int j = 0; j < /*dc->width*/ 140; j++) {
+			for (int j = 0; j < /*dc->width*/ 120; j++) {
 				/*
 				if (dc->body[(i*dc->width_internal) + j] > 0xf) {
 					printf("B"); // isn't this supposed to be only 4 bits?! wtf?
@@ -237,7 +237,7 @@ int main(int argc, char *argv[]) {
 		call_templeos3(&t, "Load", (uint64_t)p, LDF_SILENT, INT64_MAX);
 		call_templeos1(&t, "DbgMode", 0);
 		call_templeos2(&t, "ExeFile", (uint64_t)(argv[1]), 0);
-		
+		/*
 		if (((*sys_run_level_p & RLF_HOME) != 0) && x11_enabled) {
 			call_templeos1(&t, "WallPaperSimple", (uint64_t)&t); // TODO: should call real WallPaper function
 			call_templeos(&t, "GrUpdateScrn");
@@ -248,7 +248,7 @@ int main(int argc, char *argv[]) {
 			printf("height %d internal_width %d\n", gr->dc1->height, gr->dc1->width_internal);
 			dbg_dc(gr->dc2, gr->text_base);
 			//dc1->width dc1->height dc1->width_internal (aligned) dc1->body contents 1 byte per pixel (palette index?)
-		}
+		}*/
 	} else {
 		fprintf(stderr, "Unknown extension %s\n", argv[1]);
 	}

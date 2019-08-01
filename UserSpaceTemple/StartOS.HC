@@ -33,7 +33,7 @@ if (!Bt(&sys_run_level, RLf_RAW)) {
 
 U8 *start_up_directory = StrNew(Fs->cur_dir);
 
-#include "/Rei/MakeAdam"
+#include "/Adam/MakeAdam"
 
 if (Bt(&sys_run_level, RLf_RAW)) {
 	/* The following runs a minimal command line */
@@ -46,41 +46,42 @@ if (Bt(&sys_run_level, RLf_RAW)) {
 	"Elapsed %d:%02d.%03d\n", elapsed.min, elapsed.sec, elapsed.sec100;
 	Cd(start_up_directory);
 	UserCmdLine;
-} else {
-	sys_winmgr_task = adam_task; // TODO: this will eventually need to be removed
-	//sys_winmgr_task->pix_width = 640; // do I need this?
-	//sys_winmgr_task->pix_height = 480;
-	
-	DocTermNew;
-	WinVert(2,10);
-	
-	{ // from WinMgrTask
-		WinHorz(0,TEXT_COLS-1);
-		WinVert(0,TEXT_ROWS-1);
-		LBts(&Fs->display_flags,DISPLAYf_NO_BORDER);
-		LBts(&Fs->display_flags,DISPLAYf_SHOW);
-		gr.dc->win_task=Fs;
-		Fs->win_inhibit&=~WIF_SELF_CTRLS;
-		GrSetUpTables;
-	}
-	LBts(&Fs->display_flags,DISPLAYf_SHOW);
-	RegInit;
-	LBts(&sys_run_level,RLf_REGISTRY);
-	if (!ins_reg.registered)
-	  InsUnreg;
-
-	WallPaperInit;
-	
-	if (DrvIsWritable)
-		DirMk("/Tmp"); //Good to have a Tmp
-	
-	Option(OPTf_WARN_PAREN,OFF);
-	Option(OPTf_WARN_DUP_TYPES,OFF);
-	LBts(&sys_run_level,RLf_HOME);
-
-	//#help_index ""
-	//#include "~/MakeHome"
+	Reboot;
 }
+
+sys_winmgr_task = adam_task; // TODO: this will eventually need to be removed
+//sys_winmgr_task->pix_width = 640; // do I need this?
+//sys_winmgr_task->pix_height = 480;
+
+DocTermNew;
+WinVert(2,10);
+
+{ // from WinMgrTask
+	WinHorz(0,TEXT_COLS-1);
+	WinVert(0,TEXT_ROWS-1);
+	LBts(&Fs->display_flags,DISPLAYf_NO_BORDER);
+	LBts(&Fs->display_flags,DISPLAYf_SHOW);
+	gr.dc->win_task=Fs;
+	Fs->win_inhibit&=~WIF_SELF_CTRLS;
+	GrSetUpTables;
+}
+LBts(&Fs->display_flags,DISPLAYf_SHOW);
+RegInit;
+LBts(&sys_run_level,RLf_REGISTRY);
+if (!ins_reg.registered)
+  InsUnreg;
+
+WallPaperInit;
+
+if (DrvIsWritable)
+	DirMk("/Tmp"); //Good to have a Tmp
+
+Option(OPTf_WARN_PAREN,OFF);
+Option(OPTf_WARN_DUP_TYPES,OFF);
+LBts(&sys_run_level,RLf_HOME);
+
+#help_index ""
+#include "~/MakeHome"
 
 U0 WallPaperSimple(CTask *_task) {
 	_task->text_attr=BLUE<<4+WHITE;

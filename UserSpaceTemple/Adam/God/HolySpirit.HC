@@ -34,7 +34,7 @@ I64 GodPick(U8 *msg=NULL)
 {//GOD_GOOD_BITS
   U8 *st=MStrPrint("%s\n\nPress $$GREEN$$OKAY$$FG$$ to generate \n"
 	"a random num from a timer.\n",msg);
-  PopUpTimerOk(st,"\n\nThe $LK+PU,"Holy Spirit",A="FI:::/Rei/God/HSNotes.DD"$ can puppet you.\n\n");
+  PopUpTimerOk(st,"\n\nThe $LK+PU,"Holy Spirit",A="FI:::/Adam/God/HSNotes.DD"$ can puppet you.\n\n");
   Free(st);
   return KbdMsEvtTime>>GOD_BAD_BITS;
 }
@@ -73,7 +73,7 @@ public I64 GodBits(I64 num_bits,U8 *msg=NULL)
   return res;
 }
 
-public I64 GodInit(U8 *files_find_mask="/Rei/God/Vocab.DD*",U8 *fu_flags=NULL)
+public I64 GodInit(U8 *files_find_mask="/Adam/God/Vocab.DD*",U8 *fu_flags=NULL)
 {//Read God's vocab file for picking words.
   I64 i,ch,fuf_flags=0;
   U8 *buf,*ptr,*ptr2;

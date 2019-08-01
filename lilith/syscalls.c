@@ -12,6 +12,7 @@ void syscall_RawPutChar(uint64_t c) {
 
 //uint64_t syscall_DrvLock(uint64_t); NOP
 //uint64_t syscall_JobsHndlr(uint64_t); NOP
+//uint64_t syscall_KbdTypeMatic(uint64_t); NOP
 
 void *syscall_MAlloc(uint64_t size, uint64_t mem_task) { // _MALLOC
 	stbm_heap *heap = (stbm_heap*)mem_task;

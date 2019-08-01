@@ -26,6 +26,14 @@ asm_syscall_JobsHndlr:
 	ret $0x8
 
 	.text
+	.globl asm_syscall_KbdTypeMatic
+	.type asm_syscall_KbdTypeMatic, @function
+asm_syscall_KbdTypeMatic:
+	// don't do anything
+	movq $0, %rax
+	ret $0x8
+
+	.text
 	.globl asm_syscall_MAlloc
 	.type asm_syscall_MAlloc, @function
 asm_syscall_MAlloc:
