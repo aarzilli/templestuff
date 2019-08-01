@@ -325,6 +325,13 @@ void load_kernel(void) {
 	kernel_patch_instruction("_HASH_REM_DEL", 0x2c, 0xfa, 0x90);
 	kernel_patch_instruction("RawPrint", 0x32, 0xfa, 0x90);
 	
+	// _MEMCPY call in TaskInit (because fpu_mmx initializer doesn't exist)
+	kernel_patch_instruction("TaskInit", 0x136, 0xe8, 0x90);
+	kernel_patch_instruction("TaskInit", 0x137, 0x55, 0x90);
+	kernel_patch_instruction("TaskInit", 0x138, 0xd2, 0x90);
+	kernel_patch_instruction("TaskInit", 0x139, 0xfe, 0x90);
+	kernel_patch_instruction("TaskInit", 0x13a, 0xff, 0x90);
+	
 	setup_syscall_trampolines();
 	
 	// the kernel needs to know where it's loaded, the 16bit startup code would do this

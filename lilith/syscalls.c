@@ -839,7 +839,11 @@ syscall_Spawn_finish:
 
 uint64_t syscall_TaskStkNew(int64_t stk_size, struct CTask *task) {
 	// This breaks CallStkGrow but it wouldn't work anyway...
-	return 0;
+	struct CTaskStk *stk = stbm_alloc(NULL, data_heap, sizeof(struct CTaskStk), 0);
+	stk->stk_size = 0;
+	stk->stk_ptr = 0;
+	stk->next_stk = NULL;
+	return (uint64_t)stk;
 }
 
 uint64_t syscall_CallStkGrow(int64_t stk_size_threshold, int64_t stk_size, uint64_t fp) {
