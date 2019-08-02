@@ -71,7 +71,10 @@ struct templeos_thread_info {
 	uint64_t stk_size;
 	
 	bool window_initialized;
+	bool window_failed;
 	Window win;
+	XImage *image;
+	XShmSegmentInfo shminfo;
 	
 	struct templeos_thread_info *next;
 };

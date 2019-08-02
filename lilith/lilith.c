@@ -24,6 +24,9 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xos.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <X11/extensions/XShm.h>
 
 #define DEBUG false
 #define DEBUG_LOAD_PASS1 false
