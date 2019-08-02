@@ -30,7 +30,7 @@ U0 StartUpTasks()
   XTalk(user1,"Cd;#include \"Once\";\n");
   Silent;	//no output to scrn
   Cd(start_up_directory);
-  ACInit("./*;!*/Bible.TXT*");
+  //ACInit("./*;!*/Bible.TXT*"); // TODO: reenable this
   Silent(OFF); //no output to scrn
 }
 

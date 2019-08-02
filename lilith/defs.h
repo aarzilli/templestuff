@@ -69,6 +69,11 @@ struct templeos_thread_info {
 	void (*fp)(uint8_t *);
 	uint8_t *data;
 	uint64_t stk_size;
+	
+	bool window_initialized;
+	Window win;
+	
+	struct templeos_thread_info *next;
 };
 
 void load_pass1(uint8_t *patch_table, uint8_t *module_base);
@@ -101,6 +106,7 @@ struct templeos_mem_entry_t *get_templeos_memory(uint64_t p);
 bool is_templeos_memory(uint64_t p);
 
 extern pthread_mutex_t thread_create_destruct_mutex;
+extern struct templeos_thread_info *first_templeos_task;
 
 void *templeos_task_start(void *arg);
 
@@ -146,5 +152,6 @@ void setup_syscall_trampolines(void);
 extern char *x11_display;
 extern bool x11_enabled;
 
+void x11_start(struct templeos_thread sys_winmgr_thread);
 
 #endif

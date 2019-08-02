@@ -21,6 +21,10 @@
 #include <time.h>
 #include <pthread.h>
 
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/Xos.h>
+
 #define DEBUG false
 #define DEBUG_LOAD_PASS1 false
 #define DEBUG_FILE_SYSTEM false
@@ -28,6 +32,7 @@
 #define DEBUG_PRINT_TEMPLEOS_SYMBOL_TABLE_ON_SIGNAL false
 #define DEBUG_REGISTER_ALL_ALLOCATIONS false
 #define DEBUG_TASKS true
+#define DEBUG_X11 true
 
 #define IN_GDB false
 #define TEMPLEOS_ENTER_EXIT_CHECKS false // do extra checks on entry and exit from TempleOS tasks
@@ -242,6 +247,7 @@ int main(int argc, char *argv[]) {
 		call_templeos3(&t, "Load", (uint64_t)p, LDF_SILENT, INT64_MAX);
 		call_templeos1(&t, "DbgMode", 0);
 		call_templeos2(&t, "ExeFile", (uint64_t)(argv[1]), 0);
+		x11_start(t);
 		/*
 		if (((*sys_run_level_p & RLF_HOME) != 0) && x11_enabled) {
 			call_templeos1(&t, "WallPaperSimple", (uint64_t)&t); // TODO: should call real WallPaper function

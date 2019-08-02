@@ -798,7 +798,7 @@ uint64_t syscall_Spawn(uint64_t fp, uint8_t *data, uint8_t *task_name, int64_t t
 		goto syscall_Spawn_finish;
 	}
 	
-	struct templeos_thread_info *ti = malloc(sizeof(struct templeos_thread_info));
+	struct templeos_thread_info *ti = calloc(sizeof(struct templeos_thread_info), 1);
 	
 	ti->t.Fs = task;
 	

@@ -71,7 +71,15 @@ LBts(&sys_run_level,RLf_REGISTRY);
 if (!ins_reg.registered)
   InsUnreg;
 
-WallPaperInit;
+U0 WallPaperSimple(CTask *_task) {
+	_task->text_attr=BLUE<<4+WHITE;
+	TextPrint(Fs, 0, 0, BLUE<<4+WHITE, "Hello Mr. God");
+}
+
+{ // Replacement for WallPaperInit
+	TermBttnNew;
+	gr.fp_wall_paper = &WallPaperSimple;
+}
 
 if (DrvIsWritable)
 	DirMk("/Tmp"); //Good to have a Tmp
@@ -82,11 +90,6 @@ LBts(&sys_run_level,RLf_HOME);
 
 #help_index ""
 #include "~/MakeHome"
-
-U0 WallPaperSimple(CTask *_task) {
-	_task->text_attr=BLUE<<4+WHITE;
-	TextPrint(Fs, 0, 0, BLUE<<4+WHITE, "Hello Mr. God");
-}
 
 /****
 //

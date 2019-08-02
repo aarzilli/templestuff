@@ -186,6 +186,11 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	sigaction(SIGABRT, &act, NULL);
 	sigaction(SIGSEGV, &act, NULL);
 	sigaction(SIGTRAP, &act, NULL);
+	
+	struct templeos_thread_info *ti = calloc(sizeof(struct templeos_thread_info), 1);
+	ti->t = *t;
+	ti->next = first_templeos_task;
+	first_templeos_task = ti;
 }
 
 void enter_templeos(struct templeos_thread *t) {
@@ -523,10 +528,11 @@ void free_for_templeos(void *p) {
 }
 
 pthread_mutex_t thread_create_destruct_mutex = PTHREAD_MUTEX_INITIALIZER;
+struct templeos_thread_info *first_templeos_task = NULL;
 
 void *templeos_task_start(void *arg) {
 	struct templeos_thread_info *ti = (struct templeos_thread_info *)arg;
-	
+		
 	if (arch_prctl(ARCH_GET_GS, (uint64_t)&(ti->t.Gs->glibc_gs)) == -1) {
 		fprintf(stderr, "could not read gs segment: %s\n", strerror(errno));
 		free(ti->t.Fs);
@@ -542,14 +548,20 @@ void *templeos_task_start(void *arg) {
 		return NULL;
 	}
 	
-	if (DEBUG_TASKS) {
-		pthread_mutex_lock(&thread_create_destruct_mutex);
-		fprintf(stderr, "new task started for %p/%s\n", ti->t.Fs, ti->t.Fs->task_name);
-		pthread_mutex_unlock(&thread_create_destruct_mutex);
-	}
 	
 	call_templeos2(&ti->t, "TaskInit", (uint64_t)(ti->t.Fs), 0);
 	ti->t.Fs->hash_table->next = ti->t.Fs->parent_task->hash_table;
+	
+	pthread_mutex_lock(&thread_create_destruct_mutex);
+	{
+		fprintf(stderr, "first task was %p\n", first_templeos_task);
+		ti->next = first_templeos_task;
+		first_templeos_task = ti;
+		if (DEBUG_TASKS) {
+			fprintf(stderr, "new task started for %p/%s\n", ti->t.Fs, ti->t.Fs->task_name);
+		}
+	}
+	pthread_mutex_unlock(&thread_create_destruct_mutex);
 	
 	fflush(stdout);
 	fflush(stderr);
@@ -558,6 +570,7 @@ void *templeos_task_start(void *arg) {
 	call_templeos1_asm(ti->fp, (uint64_t)ti->data);
 	exit_templeos(&ti->t);
 	
+	//TODO: handle task destruction (here, everywhere we call pthread_exit and also as callback to TaskEnd?
 	if (DEBUG_TASKS) {
 		pthread_mutex_lock(&thread_create_destruct_mutex);
 		fprintf(stderr, "task finished %p/%s\n", ti->t.Fs, ti->t.Fs->task_name);

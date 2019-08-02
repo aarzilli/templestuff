@@ -304,3 +304,4 @@ struct CDC {
 };
 
 #define TTS_TASK_NAME		2
+#define DISPLAY_SHOW 1
