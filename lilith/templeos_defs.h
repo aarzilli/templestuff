@@ -305,3 +305,12 @@ struct CDC {
 
 #define TTS_TASK_NAME		2
 #define DISPLAY_SHOW 1
+
+struct CTextGlbls {
+  int64_t	raw_col,raw_flags;
+  uint8_t	*raw_scrn_image;
+  int64_t	rows,cols;		//Use TEXT_ROWS,TEXT_COLS
+  uint64_t	*font,*aux_font;
+  uint8_t	*vga_alias,*vga_text_alias;
+  uint8_t	border_chars[16];
+};

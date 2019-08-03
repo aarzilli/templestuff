@@ -98,6 +98,7 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 	int ShmCompletionEventType = XShmGetEventBase(dis) + ShmCompletion;
 	
 	struct CGrGlbls *gr = (struct CGrGlbls *)templeos_var64_ptr(sys_winmgr_thread.Fs, "gr");
+	struct CTextGlbls *text = templeos_var64_ptr(sys_winmgr_thread.Fs, "text");
 	
 	struct timespec timo;
 	timo.tv_sec = 0;
@@ -119,10 +120,6 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 				continue;
 			}
 			
-			if (ti->t.Fs != sys_winmgr_thread.Fs) { //TODO: remove this
-				continue;
-			}
-			
 			struct CTask *task = ti->t.Fs;
 			if (!ti->window_initialized) {
 				if (DEBUG_X11) {
@@ -131,8 +128,10 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 				create_window(ti, dis, screen, black, white, visual, depth);
 				if (ti->t.Fs == sys_winmgr_thread.Fs) {
 					ti->dc = gr->dc2;
+					ti->text_base = gr->text_base;
 				} else {
 					ti->dc = (struct CDC *)call_templeos4(&sys_winmgr_thread, "DCNew", gr->dc2->width, gr->dc2->height, (uint64_t)sys_winmgr_thread.Fs, 0);
+					ti->text_base = malloc_for_templeos(text->rows*text->cols*sizeof(uint32_t), data_heap, true);
 				}
 			}
 			
@@ -141,15 +140,16 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 			}
 			
 			struct CDC *original_dc = gr->dc2;
+			uint32_t *original_text_base = gr->text_base;
+			gr->text_base = ti->text_base;
 			gr->dc2 = ti->dc;
 			
-			if (ti->t.Fs == sys_winmgr_thread.Fs) {
-				call_templeos(&sys_winmgr_thread, "GrUpdateTextBG");
-				call_templeos(&sys_winmgr_thread, "GrUpdateTextFG");
-			}
+			call_templeos(&sys_winmgr_thread, "GrUpdateTextBG");
+			call_templeos(&sys_winmgr_thread, "GrUpdateTextFG");
 			
 			call_templeos1(&sys_winmgr_thread, "GrUpdateTaskWin", (uint64_t)task);
 			
+			gr->text_base = original_text_base;
 			gr->dc2 = original_dc;
 			
 			if (!ti->image_used_by_server) {
@@ -167,6 +167,8 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 		pthread_mutex_unlock(&thread_create_destruct_mutex);
 		
 		XNextEvent(dis, &event);
+		
+		//TODO: handle window close
 		
 		switch (event.type) {
 		case Expose:
