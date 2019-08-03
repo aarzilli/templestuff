@@ -115,4 +115,19 @@ call_templeos3_asm:
 	pop_registers
 	ret
 
+	.text
+	.globl call_templeos4_asm
+	.type call_templeos4_asm, @function
+call_templeos4_asm:
+	push_registers_except_rax
+	push %r8
+	push %rcx
+	push %rdx
+	push %rsi
+	call *%rdi
+	pop_registers_except_rax
+	ret
+
+	
+
 	.include "syscalls.s"

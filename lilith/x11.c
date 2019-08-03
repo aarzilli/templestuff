@@ -8,6 +8,7 @@ void create_window(struct templeos_thread_info *ti, Display *dis, int screen, un
 	int height = 480;
 	
 	ti->win = XCreateSimpleWindow(dis, RootWindow(dis, screen), 10, 10, width, height, 1, black, white);
+	//TODO: disable resize?
 	XSelectInput(dis, ti->win, ExposureMask | KeyPressMask);
 	XMapWindow(dis, ti->win);
 	
@@ -24,7 +25,7 @@ void create_window(struct templeos_thread_info *ti, Display *dis, int screen, un
 		fprintf(stderr, "Task %p/%s: could not create shm allocation: %s\n", ti->t.Fs, ti->t.Fs->task_name, strerror(errno));
 		return;
 	}
-	
+		
 	ti->shminfo.shmaddr = ti->image->data = shmat(ti->shminfo.shmid, 0, 0);
 	ti->shminfo.readOnly = False; 
 	
@@ -96,7 +97,7 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 				continue;
 			}
 			
-			if (ti->t.Fs != sys_winmgr_thread.Fs) { // remove this, do all windows
+			if (ti->t.Fs != sys_winmgr_thread.Fs) { //TODO: remove this
 				continue;
 			}
 			
@@ -106,12 +107,19 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 					fprintf(stderr, "Task %p/%s: creating window top=%ld bottom=%ld left=%ld right=%ld\n", task, task->task_name, task->win_top, task->win_bottom, task->win_left, task->win_right);
 				}
 				create_window(ti, dis, screen, black, white, visual, depth);
+				if (ti->t.Fs == sys_winmgr_thread.Fs) {
+					ti->dc = gr->dc2;
+				} else {
+					ti->dc = (struct CDC *)call_templeos4(&sys_winmgr_thread, "DCNew", gr->dc2->width, gr->dc2->height, (uint64_t)sys_winmgr_thread.Fs, 0);
+				}
 			}
 			
 			if (ti->window_failed) {
 				continue;
 			}
-			//TODO: need to set the gr.dc2 of each window to a different value...
+			
+			struct CDC *original_dc = gr->dc2;
+			gr->dc2 = ti->dc;
 			
 			if (ti->t.Fs == sys_winmgr_thread.Fs) {
 				call_templeos(&sys_winmgr_thread, "GrUpdateTextBG");
@@ -120,8 +128,10 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 			
 			call_templeos1(&sys_winmgr_thread, "GrUpdateTaskWin", (uint64_t)task);
 			
+			gr->dc2 = original_dc;
+			
 			if (!ti->image_used_by_server) {
-				image_templeos_to_x11(gr->dc2, ti->image);
+				image_templeos_to_x11(ti->dc, ti->image);
 				ti->image_used_by_server = true;
 				if (XShmPutImage(dis, ti->win, gc, ti->image, 0, 0, 0, 0, ti->image->width, ti->image->height, False) == 0) {
 					fprintf(stderr, "Task %p/%s: could not transmit image\n", ti->t.Fs, ti->t.Fs->task_name);

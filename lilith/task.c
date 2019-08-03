@@ -440,6 +440,24 @@ void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64
 	exit_templeos(t);
 }
 
+extern uint64_t call_templeos4_asm(void *entry, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4);
+
+uint64_t call_templeos4(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4) {
+	void *entry = find_entry_point(t, name);
+	if (entry == NULL) {
+		fprintf(stderr, "Could not call %s\n", name);
+		exit(EXIT_FAILURE);
+	}
+	fflush(stdout);
+	fflush(stderr);
+	
+	enter_templeos(t);
+	uint64_t r = call_templeos4_asm(entry, arg1, arg2, arg3, arg4);
+	exit_templeos(t);
+	return r;
+}
+
+
 // malloc_for_templeos returns a chunk of memory of the specified size
 // allocated for TempleOS (TempleOS will be able to call Free on it).
 void *malloc_for_templeos(uint64_t size, stbm_heap *heap, bool zero) {
