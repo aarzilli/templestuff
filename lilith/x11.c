@@ -38,6 +38,9 @@ void image_templeos_to_x11(struct CDC *dc, XImage *image) {
 	for (int i = 0; i < dc->height; ++i) {
 		for (int j = 0; j  < dc->width; ++j) {
 			uint8_t idx = dc->body[(i*dc->width_internal) + j];
+			if (idx >= COLORS_NUM) {
+				idx = 0;
+			}
 			uint64_t bgr = dc->palette[idx];
 			//TODO: replace with writing directly to the buffer
 			XPutPixel(image, j, i, bgr);
@@ -58,6 +61,21 @@ struct templeos_thread_info *find_thread_info_for_window(Window win) {
 	}
 	pthread_mutex_unlock(&thread_create_destruct_mutex);
 	return NULL;
+}
+
+void dbg_dc(struct CDC *dc) {
+	if (dc->body != NULL) {
+		for (int i = 0; i < dc->height; i++) {
+			for (int j = 0; j < /*dc->width*/ 120; j++) {
+				if (dc->body[(i*dc->width_internal) + j] > 0xf) {
+					printf("B"); // isn't this supposed to be only 4 bits?! wtf?
+				} else {
+					printf("%x", dc->body[(i*dc->width_internal) + j]);
+				}
+			}
+			printf("\n");
+		}
+	}
 }
 
 void x11_start(struct templeos_thread sys_winmgr_thread) {
@@ -131,11 +149,15 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 			gr->dc2 = original_dc;
 			
 			if (!ti->image_used_by_server) {
-				image_templeos_to_x11(ti->dc, ti->image);
-				ti->image_used_by_server = true;
-				if (XShmPutImage(dis, ti->win, gc, ti->image, 0, 0, 0, 0, ti->image->width, ti->image->height, False) == 0) {
-					fprintf(stderr, "Task %p/%s: could not transmit image\n", ti->t.Fs, ti->t.Fs->task_name);
-				}
+				event.type = Expose;
+				event.xexpose.display = dis;
+				event.xexpose.window = ti->win;
+				event.xexpose.x = 0;
+				event.xexpose.y = 0;
+				event.xexpose.width = ti->image->width;
+				event.xexpose.height = ti->image->height;
+				event.xexpose.count = 0;
+				XSendEvent(dis, ti->win, True, ExposureMask, &event);
 			}
 		}
 		pthread_mutex_unlock(&thread_create_destruct_mutex);
@@ -147,6 +169,7 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 			if (event.xexpose.count == 0) {
 				struct templeos_thread_info *ti = find_thread_info_for_window(event.xany.window);
 				if (ti != NULL) {
+					image_templeos_to_x11(ti->dc, ti->image);
 					ti->image_used_by_server = true;
 					if (XShmPutImage(dis, ti->win, gc, ti->image, 0, 0, 0, 0, ti->image->width, ti->image->height, True) == 0) {
 						fprintf(stderr, "Task %p/%s: could not transmit image\n", ti->t.Fs, ti->t.Fs->task_name);

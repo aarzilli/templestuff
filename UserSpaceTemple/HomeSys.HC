@@ -23,7 +23,7 @@ U0 StartUpTasks()
 {
   CTask *user1,*user2;
   user1=User;
-  user2=User;
+  //user2=User; // TODO: reenable this
   WinToTop(user1);
   WinTileVert;
   "Boot Time:%7.3fs\n",tS;

@@ -89,49 +89,6 @@ struct CTask *adam_task = NULL;
 
 #define USER_SPACE_TEMPLE "/UserSpaceTemple/"
 
-void dbg_dc(struct CDC *dc, uint32_t *text_base) {
-	/*
-	if (text_base != NULL) {
-		int text_rows = 60;
-		int text_cols = 80;
-		
-		for (int i = 0; i < text_rows; ++i) {
-			for (int j = 0; j < text_cols; ++j) {
-				uint32_t c = text_base[i*text_cols + j];
-				if (c == 0) {
-					printf(" ");
-				} else {
-					printf("%c", (char)c);
-				}
-			}
-			printf("\n");
-		}
-	}*/
-	int count = 0;
-	if (dc->body != NULL) {
-		for (int i = 0; i < dc->height; i++) {
-			for (int j = 0; j < /*dc->width*/ 120; j++) {
-				/*
-				if (dc->body[(i*dc->width_internal) + j] > 0xf) {
-					printf("B"); // isn't this supposed to be only 4 bits?! wtf?
-				} else {
-					printf("%x", dc->body[(i*dc->width_internal) + j]);
-				}*/
-				if (dc->body[(i*dc->width_internal) + j] > 1) {
-					printf("#");
-				} else {
-					printf(" ");
-				}
-				if (dc->body[(i*dc->width_internal) + j] != 0) {
-					++count;
-				}
-			}
-			printf("\n");
-		}
-	}
-	printf("total %d\n", count);
-}
-
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		fflush(stdout);
@@ -251,18 +208,6 @@ int main(int argc, char *argv[]) {
 		call_templeos1(&t, "DbgMode", 0);
 		call_templeos2(&t, "ExeFile", (uint64_t)(argv[1]), 0);
 		x11_start(t);
-		/*
-		if (((*sys_run_level_p & RLF_HOME) != 0) && x11_enabled) {
-			call_templeos1(&t, "WallPaperSimple", (uint64_t)&t); // TODO: should call real WallPaper function
-			call_templeos(&t, "GrUpdateScrn");
-			
-			struct CGrGlbls *gr = (struct CGrGlbls *)templeos_var64_ptr(t.Fs, "gr");
-			printf("gr is %p\n", gr);
-			printf("zoom %ld\n", gr->scrn_zoom);
-			printf("height %d internal_width %d\n", gr->dc1->height, gr->dc1->width_internal);
-			dbg_dc(gr->dc2, gr->text_base);
-			//dc1->width dc1->height dc1->width_internal (aligned) dc1->body contents 1 byte per pixel (palette index?)
-		}*/
 	} else {
 		fprintf(stderr, "Unknown extension %s\n", argv[1]);
 	}
