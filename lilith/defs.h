@@ -75,6 +75,7 @@ struct templeos_thread_info {
 	Window win;
 	XImage *image;
 	XShmSegmentInfo shminfo;
+	bool image_used_by_server;
 	
 	struct templeos_thread_info *next;
 };

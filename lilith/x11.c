@@ -44,6 +44,21 @@ void image_templeos_to_x11(struct CDC *dc, XImage *image) {
 	}
 }
 
+struct templeos_thread_info *find_thread_info_for_window(Window win) {
+	pthread_mutex_lock(&thread_create_destruct_mutex);
+	for (struct templeos_thread_info *ti = first_templeos_task; ti != NULL; ti = ti->next) {
+		if ((ti->t.Fs->display_flags & DISPLAY_SHOW) == 0) {
+			continue;
+		}
+		if (ti->win == win) {
+			pthread_mutex_unlock(&thread_create_destruct_mutex);
+			return ti;
+		}
+	}
+	pthread_mutex_unlock(&thread_create_destruct_mutex);
+	return NULL;
+}
+
 void x11_start(struct templeos_thread sys_winmgr_thread) {
 	if (DEBUG_X11) {
 		fprintf(stderr, "serving x11\n");
@@ -57,6 +72,8 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 	unsigned long white = WhitePixel(dis, screen);
 	unsigned long black = BlackPixel(dis, 	screen);
 	
+	int ShmCompletionEventType = XShmGetEventBase(dis) + ShmCompletion;
+	
 	struct CGrGlbls *gr = (struct CGrGlbls *)templeos_var64_ptr(sys_winmgr_thread.Fs, "gr");
 	
 	struct timespec timo;
@@ -64,7 +81,7 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 	timo.tv_nsec = 16670000;
 	
 	for(;;) {
-		//XEvent event;
+		XEvent event;
 		
 		if (!XPending(dis)) {
 			nanosleep(&timo, NULL);
@@ -103,36 +120,40 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 			
 			call_templeos1(&sys_winmgr_thread, "GrUpdateTaskWin", (uint64_t)task);
 			
-			image_templeos_to_x11(gr->dc2, ti->image);
-			if (XShmPutImage(dis, ti->win, gc, ti->image, 0, 0, 0, 0, ti->image->width, ti->image->height, False) == 0) {
-				fprintf(stderr, "Task %p/%s: could not transmit image\n", ti->t.Fs, ti->t.Fs->task_name);
+			if (!ti->image_used_by_server) {
+				image_templeos_to_x11(gr->dc2, ti->image);
+				ti->image_used_by_server = true;
+				if (XShmPutImage(dis, ti->win, gc, ti->image, 0, 0, 0, 0, ti->image->width, ti->image->height, False) == 0) {
+					fprintf(stderr, "Task %p/%s: could not transmit image\n", ti->t.Fs, ti->t.Fs->task_name);
+				}
 			}
-			//TODO: wait for the completion event before reusing the image (must pass True as the last parameter)
 		}
 		pthread_mutex_unlock(&thread_create_destruct_mutex);
 		
-		/*
 		XNextEvent(dis, &event);
 		
 		switch (event.type) {
 		case Expose:
 			if (event.xexpose.count == 0) {
-				XFillRectangle(dis, win, DefaultGC(dis, screen), 20, 20, 10, 10);
-				XDrawString(dis, win, DefaultGC(dis, screen), 50, 50, "Hello World!", strlen("Hello World!"));
-			}
-			
-		case KeyPress: {
-			char text[255];
-			KeySym key;
-			if (XLookupString(&event.xkey, text, 255, &key, 0) == 1) {
-				if (text[0] == 'q') {
-					XDestroyWindow(dis,win);
-					XCloseDisplay(dis);	
-					exit(1);
+				struct templeos_thread_info *ti = find_thread_info_for_window(event.xany.window);
+				if (ti != NULL) {
+					ti->image_used_by_server = true;
+					if (XShmPutImage(dis, ti->win, gc, ti->image, 0, 0, 0, 0, ti->image->width, ti->image->height, True) == 0) {
+						fprintf(stderr, "Task %p/%s: could not transmit image\n", ti->t.Fs, ti->t.Fs->task_name);
+					}
 				}
 			}
+			break;
+		
+		default:
+			if (event.type == ShmCompletionEventType) {
+				struct templeos_thread_info *ti = find_thread_info_for_window(event.xany.window);
+				if (ti != NULL) {
+					ti->image_used_by_server = false;
+				}
+			}
+			break;
 		}
-		}*/
 	}
 }
 
