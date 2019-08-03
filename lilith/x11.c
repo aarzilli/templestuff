@@ -42,6 +42,10 @@ void image_templeos_to_x11(struct CDC *dc, XImage *image) {
 				idx = 0;
 			}
 			uint64_t bgr = dc->palette[idx];
+			uint64_t b = bgr&0xffff;
+			uint64_t g = (bgr&0xffff0000)>>16;
+			uint64_t r = (bgr&0xffff00000000)>>32;
+			bgr = (b>>8) | (g&0xff00) | ((r&0xff00)<<8);
 			//TODO: replace with writing directly to the buffer
 			XPutPixel(image, j, i, bgr);
 		}

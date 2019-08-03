@@ -25,10 +25,10 @@ if (!Bt(&sys_run_level, RLf_RAW)) {
 	text.rows = GR_HEIGHT/FONT_HEIGHT;
 	text.border_chars[2] (I64)=0x0908070605040302;
 	text.border_chars[10](U32)=0x0D0C0B0A;
-	Fs->win_left=1;
-	Fs->win_right = text.cols;
-	Fs->win_top++;
-	Fs->win_bottom = text.rows;
+	Fs->win_left=0;
+	Fs->win_right = text.cols-1;
+	Fs->win_top=0;
+	Fs->win_bottom = text.rows-1;
 }
 
 U8 *start_up_directory = StrNew(Fs->cur_dir);
@@ -72,8 +72,11 @@ if (!ins_reg.registered)
   InsUnreg;
 
 U0 WallPaperSimple(CTask *_task) {
-	_task->text_attr=BLUE<<4+WHITE;
-	TextPrint(Fs, 0, 0, BLUE<<4+WHITE, "Hello Mr. God");
+	I64 i;
+	_task->text_attr=BLUE<<4+BLUE;
+	for (i = 0; i < 15; ++i) {
+		TextPrint(Fs, 0, i, (i<<4)+WHITE, "Hello Mr. God");
+	}
 }
 
 { // Replacement for WallPaperInit
