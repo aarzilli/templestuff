@@ -300,44 +300,9 @@ I64 WinOnTopWindows()
 
 public I64 WinToTop(CTask *task=NULL,Bool update_z_buf=TRUE)
 {//Put task's win on top of window stack.
-  CTask *task1;
-  I64 res=0;
-  if (!task) task=Fs;
-  if (!TaskValidate(task) || task->gs->num)
-    return 0;
-  TaskDerivedValsUpdate(task,FALSE);
-  if (!sys_winmgr_task || task==sys_winmgr_task)
-    return 0;
-  PUSHFD
-  CLI
-  if (!TaskValidate(task)) {
-    POPFD
-    return 0;
-  }
-  if (task!=sys_winmgr_task->last_task) {
-    TaskQueRem(task);
-    TaskQueIns(task,sys_winmgr_task);
-    res++;
-  }
-  if (!Bt(&task->win_inhibit,WIf_SELF_FOCUS))
-    sys_focus_task=task;
-  if (res && !Bt(&task->display_flags,DISPLAYf_CHILDREN_NOT_ON_TOP)) {
-    task1=task->next_child_task;
-    while (task1!=&task->next_child_task) {
-      if (!TaskValidate(task1))
-	break;
-      res+=WinToTop(task1,FALSE);
-      task1=task1->next_sibling_task;
-    }
-    if (task->popup_task &&
-	  task->popup_task->parent_task==task)
-      res+=WinToTop(task->popup_task,FALSE);
-  }
-  POPFD
-  res+=WinOnTopWindows;
-  if (res && update_z_buf)
-    WinZBufUpdate;
-  return res;
+  task = task;
+  update_z_buf = update_z_buf;
+  return 1;
 }
 ext[EXT_WIN_TO_TOP]=&WinToTop;
 

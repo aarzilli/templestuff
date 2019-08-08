@@ -752,7 +752,7 @@ uint64_t syscall_Spawn(uint64_t fp, uint8_t *data, uint8_t *task_name, int64_t t
 	struct templeos_thread t;
 	exit_templeos(&t);
 	
-	struct CTask *task = malloc_for_templeos(sizeof(struct CTask), data_heap, true);
+	struct CTask *task = malloc_for_templeos(sizeof(struct CTask), code_heap, true);
 	
 	task->task_signature = TASK_SIGNATURE;
 	if (task_name == NULL) {
@@ -808,8 +808,6 @@ uint64_t syscall_Spawn(uint64_t fp, uint8_t *data, uint8_t *task_name, int64_t t
 	ti->fp = (void (*)(uint8_t *))fp;
 	ti->data = data;
 	ti->stk_size = stk_size;
-		
-	//TODO: add to task list
 	
 	if (pthread_create(&ti->thread_id, &attr, templeos_task_start, ti) != 0) {
 		fprintf(stderr, "could not create thread: %s\n", strerror(errno));
