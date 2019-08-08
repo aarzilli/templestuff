@@ -1,6 +1,8 @@
 char *x11_display = NULL;
 bool x11_enabled = false;
 
+Atom atomNETWMName, atomUTF8String;
+
 void create_window(struct templeos_thread_info *ti, Display *dis, int screen, unsigned long black, unsigned long white, Visual *visual, int depth) {
 	ti->window_initialized = true;
 	
@@ -31,7 +33,10 @@ void create_window(struct templeos_thread_info *ti, Display *dis, int screen, un
 	
 	if (XShmAttach(dis, &ti->shminfo) == 0) {
 		ti->window_failed = true;
+		return;
 	}
+	
+	XChangeProperty(dis, ti->win, atomNETWMName, atomUTF8String, 8, PropModeReplace, ti->t.Fs->task_title, strlen((char *)(ti->t.Fs->task_title)));
 }
 
 void image_templeos_to_x11(struct CDC *dc, XImage *image) {
@@ -94,6 +99,9 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 	
 	unsigned long white = WhitePixel(dis, screen);
 	unsigned long black = BlackPixel(dis, 	screen);
+	
+	atomNETWMName = XInternAtom(dis, "_NET_WM_NAME", False);
+	atomUTF8String = XInternAtom(dis, "UTF8_STRING", False);
 	
 	int ShmCompletionEventType = XShmGetEventBase(dis) + ShmCompletion;
 	
