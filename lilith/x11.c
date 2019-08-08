@@ -144,10 +144,12 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 			gr->text_base = ti->text_base;
 			gr->dc2 = ti->dc;
 			
+			pthread_mutex_unlock(&thread_create_destruct_mutex);
 			call_templeos(&sys_winmgr_thread, "GrUpdateTextBG");
 			call_templeos(&sys_winmgr_thread, "GrUpdateTextFG");
 			
 			call_templeos1(&sys_winmgr_thread, "GrUpdateTaskWin", (uint64_t)task);
+			pthread_mutex_lock(&thread_create_destruct_mutex);
 			
 			gr->text_base = original_text_base;
 			gr->dc2 = original_dc;

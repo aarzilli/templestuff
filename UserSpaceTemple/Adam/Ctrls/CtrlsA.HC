@@ -63,8 +63,6 @@ U0 DrawCtrls(CTask *task)
     if (c->flags&CTRLF_SHOW) {
       if (c->flags&CTRLF_BORDER) {
 	if (!Bt(&task->display_flags,DISPLAYf_NO_BORDER)) {
-	  PUSHFD
-	  CLI
 	  while (LBts(&task->task_flags,TASKf_TASK_LOCK))
 	    PAUSE
 
@@ -75,13 +73,10 @@ U0 DrawCtrls(CTask *task)
 	  WinDerivedValsUpdate(task);
 
 	  LBtr(&task->task_flags,TASKf_TASK_LOCK);
-	  POPFD
 
 	  if (c->draw_it)
 	    (*c->draw_it)(dc,c);
 
-	  PUSHFD
-	  CLI
 	  while (LBts(&task->task_flags,TASKf_TASK_LOCK))
 	    PAUSE
 
@@ -92,7 +87,6 @@ U0 DrawCtrls(CTask *task)
 	  WinDerivedValsUpdate(task);
 
 	  LBtr(&task->task_flags,TASKf_TASK_LOCK);
-	  POPFD
 	}
       } else
 	if (c->draw_it)

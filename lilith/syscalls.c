@@ -839,3 +839,5 @@ uint64_t syscall_CallStkGrow(int64_t stk_size_threshold, int64_t stk_size, uint6
 	fprintf(stderr, "thread %p/%s called CallStkGrow\n", t.Fs, t.Fs->task_name);
 	pthread_exit(NULL);
 }
+
+//uint64_t TaskText(struct CTask *srv, struct CTask *master, uint8_t *data, int64_t flags); NOP

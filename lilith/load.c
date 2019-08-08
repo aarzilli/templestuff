@@ -324,6 +324,7 @@ void load_kernel(void) {
 	kernel_patch_instruction("HashTablePurge", 0x26, 0xfa, 0x90);
 	kernel_patch_instruction("_HASH_REM_DEL", 0x2c, 0xfa, 0x90);
 	kernel_patch_instruction("RawPrint", 0x32, 0xfa, 0x90);
+	kernel_patch_instruction("WinDerivedValsUpdate", 0x18, 0xfa, 0x90);
 	
 	// _MEMCPY call in TaskInit (because fpu_mmx initializer doesn't exist)
 	kernel_patch_instruction("TaskInit", 0x136, 0xe8, 0x90);
