@@ -228,4 +228,3 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 		}
 	}
 }
-

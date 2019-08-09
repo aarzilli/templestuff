@@ -377,16 +377,7 @@ uint64_t *kernel_var64_ptr(char *name) {
 	return (uint64_t *)(hash_get(&symbols, name)->val);
 }
 
-// trampoline_kernel_patch writes a jump to 'dest' at the entry point of the kernel function named 'name'.
-// the jump in question is an absolute 64bit jump constructed using a PUSH+MOV+RET sequence.
-void trampoline_kernel_patch(char *name, void dest(void)) {
-	struct export_t *h = hash_get(&symbols, name);
-	if (h == NULL) {
-		fprintf(stderr, "FATAL: could not patch %s (symbol not found)\n", name);
-		exit(1);
-	}
-	uint8_t *x = (uint8_t *)(h->val);
-	uint64_t d = (uint64_t)dest;
+void write_trampoline_jmp(uint8_t *x, uint64_t d) {
 	if (DEBUG) {
 		printf("patching %p as jump to %lx\n", x, d);
 	}
@@ -398,15 +389,45 @@ void trampoline_kernel_patch(char *name, void dest(void)) {
 	x[4] = 0x00;
 	x[5] = 0x00;
 	*((uint64_t *)(x+6)) = d; // jump destination address (absolute)
+}
+
+// trampoline_kernel_patch writes a jump to 'dest' at the entry point of the kernel function named 'name'.
+// the jump in question is an absolute 64bit jump constructed using a PUSH+MOV+RET sequence.
+void trampoline_kernel_patch(struct templeos_thread *t, char *name, void dest(void)) {
+	if (t == NULL) {
+		struct export_t *h = hash_get(&symbols, name);
+		if (h == NULL) {
+			fprintf(stderr, "FATAL: could not patch %s (symbol not found)\n", name);
+			exit(1);
+		}
+		write_trampoline_jmp((uint8_t *)(h->val), (uint64_t)dest);
+		return;
+	}
 	
-	/*
-	x[0] = 0x68; // PUSH <lower 32 bits>
-	*((uint32_t *)(x+1)) = (uint32_t)d;
-	x[5] = 0xc7; // MOV <higher 32 bits>
-	x[6] = 0x44;
-	x[7] = 0x24;
-	x[8] = 0x04;
-	*((uint32_t *)(x+9)) = (uint32_t)(d>>32);
-	x[13] = 0xc3; // RETx
-	*/
+	for (struct thiter it = thiter_new(t->Fs); thiter_valid(&it); thiter_next(&it)) {
+		if (is_hash_type(it.he, HTT_EXPORT_SYS_SYM|HTF_IMM)) {
+			if (strcmp((char *)(it.he->str), name) != 0) {
+				continue;
+			}
+			struct CHashExport *ex = (struct CHashExport *)(it.he);
+			write_trampoline_jmp((uint8_t *)(ex->val), (uint64_t)dest);
+			if ((uint64_t)dest < 0x100000000) {
+				ex->val = (uint64_t)dest;
+			}
+			return;
+		} else if (is_hash_type(it.he, HTT_FUN)) {
+			if (strcmp((char *)(it.he->str), name) != 0) {
+				continue;
+			}
+			struct CHashFun *fn = (struct CHashFun *)(it.he);
+			write_trampoline_jmp(fn->exe_addr, (uint64_t)dest);
+			if ((uint64_t)dest < 0x100000000) {
+				fn->exe_addr = (uint8_t *)dest;
+			}
+			return;
+		}
+	}
+	
+	fprintf(stderr, "FATAL: could not patch %s (symbol not found - late)\n", name);
+	exit(1);
 }

@@ -185,6 +185,8 @@ struct CTask { //The Fs segment reg points to current CTask.
 	struct CWinScroll horz_scroll,vert_scroll;
 	
 	int64_t   user_data;
+	
+	pthread_mutex_t lilith_task_mutex;
 };
 
 struct CGrGlbls {

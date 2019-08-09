@@ -205,6 +205,15 @@ int main(int argc, char *argv[]) {
 	} else if (extension_is(argv[1], ".HC") || extension_is(argv[1], ".HC.Z")) {
 		char *p = "/Compiler.BIN.Z";
 		call_templeos3(&t, "Load", (uint64_t)p, LDF_SILENT, INT64_MAX);
+		
+		{
+			// this code fixes job management by replacing job control functions in the kernel with other functions
+			call_templeos2(&t, "ExeFile", (uint64_t)"/Lilith1.HC", 0);
+			trampoline_kernel_patch(&t, "LilithLockTask", (void (*)(void))lilith_lock_task);
+			trampoline_kernel_patch(&t, "LilithUnlockTask", (void (*)(void))lilith_unlock_task);
+			
+		}
+		
 		call_templeos1(&t, "DbgMode", 0);
 		call_templeos2(&t, "ExeFile", (uint64_t)(argv[1]), 0);
 		x11_start(t);

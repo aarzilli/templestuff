@@ -131,7 +131,7 @@ func writeSyscallsTrampC(syscalls []Syscall) {
 
 	fmt.Fprintf(w, "void setup_syscall_trampolines(void) {\n")
 	for _, s := range syscalls {
-		fmt.Fprintf(w, "\ttrampoline_kernel_patch(%q, &asm_syscall_%s);\n", s.dstname, s.name)
+		fmt.Fprintf(w, "\ttrampoline_kernel_patch(NULL, %q, &asm_syscall_%s);\n", s.dstname, s.name)
 	}
 	fmt.Fprintf(w, "}\n")
 

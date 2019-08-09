@@ -35,7 +35,7 @@ func staticFile(w io.Writer, path, name string) {
 		
 		fmt.Fprintf(w, "%#02x, ", buf[i])
 	}
-	fmt.Fprintf(w, "\n};\n")
+	fmt.Fprintf(w, "0x00,\n};\n")
 	
 	p := path[strings.Index(path, "/")+1:]
 	
@@ -45,7 +45,7 @@ func staticFile(w io.Writer, path, name string) {
 func staticFileTable(w io.Writer) {
 	fmt.Fprintf(w, "struct builtin_file builtin_files[] = {\n")
 	for _, sf := range staticFiles {
-		fmt.Fprintf(w, "\t{ %q, %d, %s},\n", sf.p, sf.sz, sf.name)
+		fmt.Fprintf(w, "\t{ %q, %d, %s},\n", sf.p, sf.sz+1, sf.name)
 	}
 	fmt.Fprintf(w, "};\n")
 	fmt.Fprintf(w, "#define NUM_BUILTIN_FILES %d\n", len(staticFiles))
@@ -61,6 +61,7 @@ func main() {
 	staticFile(w, "static/0000Kernel.BIN.C", "kernel_bin_c")
 	staticFile(w, "static/Compiler.BIN.Z", "compiler_bin_z")
 	staticFile(w, "static/OpCodes.DD.Z", "opcodes_dd_z")
+	staticFile(w, "static/Lilith1.HC", "lilith_1_hc")
 	
 	staticFileTable(w)
 

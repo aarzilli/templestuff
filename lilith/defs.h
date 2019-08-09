@@ -88,7 +88,7 @@ struct export_t *symbols_put(char *key, uint32_t type, uint64_t val, void *modul
 void load_kernel(void);
 
 void kernel_patch_instruction(char *name, off_t off, uint8_t original, uint8_t replacement);
-void trampoline_kernel_patch(char *name, void dest(void));
+void trampoline_kernel_patch(struct templeos_thread *t, char *name, void dest(void));
 void kernel_patch_var32(char *name, uint32_t val);
 void kernel_patch_var64(char *name, uint64_t val);
 void kernel_patch_var64_off(char *name, int off, uint64_t val);
@@ -115,6 +115,9 @@ extern pthread_mutex_t thread_create_destruct_mutex;
 extern struct templeos_thread_info *first_templeos_task;
 
 void *templeos_task_start(void *arg);
+
+void lilith_lock_task(struct CTask *task);
+void lilith_unlock_task(struct CTask *task);
 
 // templeos_hash_table.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
