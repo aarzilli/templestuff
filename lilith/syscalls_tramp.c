@@ -22,6 +22,7 @@ extern void asm_syscall_KbdTypeMatic(void);
 extern void asm_syscall_Spawn(void);
 extern void asm_syscall_TaskStkNew(void);
 extern void asm_syscall_CallStkGrow(void);
+extern void asm_syscall_TaskText(void);
 void setup_syscall_trampolines(void) {
 	trampoline_kernel_patch("RawPutChar", &asm_syscall_RawPutChar);
 	trampoline_kernel_patch("DrvLock", &asm_syscall_DrvLock);
@@ -46,4 +47,5 @@ void setup_syscall_trampolines(void) {
 	trampoline_kernel_patch("Spawn", &asm_syscall_Spawn);
 	trampoline_kernel_patch("TaskStkNew", &asm_syscall_TaskStkNew);
 	trampoline_kernel_patch("CallStkGrow", &asm_syscall_CallStkGrow);
+	trampoline_kernel_patch("TaskText", &asm_syscall_TaskText);
 }

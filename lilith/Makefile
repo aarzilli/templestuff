@@ -12,6 +12,6 @@ lilith: *.c *.s
 generate_static:
 	go run scripts/generate.go
 
-syscalls.s: syscalls.c
+syscalls.s: syscalls.c scripts/syscall_generate.go
 	go run scripts/syscall_generate.go
 

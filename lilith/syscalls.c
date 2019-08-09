@@ -840,4 +840,4 @@ uint64_t syscall_CallStkGrow(int64_t stk_size_threshold, int64_t stk_size, uint6
 	pthread_exit(NULL);
 }
 
-//uint64_t TaskText(struct CTask *srv, struct CTask *master, uint8_t *data, int64_t flags); NOP
+//uint64_t syscall_TaskText(struct CTask *srv, struct CTask *master, uint8_t *data, int64_t flags); NOP

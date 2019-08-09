@@ -247,3 +247,11 @@ asm_syscall_CallStkGrow:
 	pop_registers_except_rax
 	ret $0x18
 
+	.text
+	.globl asm_syscall_TaskText
+	.type asm_syscall_TaskText, @function
+asm_syscall_TaskText:
+	// don't do anything
+	movq $0, %rax
+	ret $0x20
+
