@@ -87,6 +87,17 @@ void dbg_dc(struct CDC *dc) {
 	}
 }
 
+bool timespec_diff_gt(struct timespec a, struct timespec b, int64_t d) {
+	switch (b.tv_sec - a.tv_sec) {
+	case 0:
+		return (b.tv_nsec - a.tv_nsec) > d;
+	case 1:
+		return ((1000000000 - a.tv_nsec) + b.tv_nsec) > d;
+	default:
+		return true;
+	}
+}
+
 void x11_start(struct templeos_thread sys_winmgr_thread) {
 	if (DEBUG_X11) {
 		fprintf(stderr, "serving x11\n");
@@ -112,69 +123,81 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 	timo.tv_sec = 0;
 	timo.tv_nsec = 16670000;
 	
+	struct timespec last_redraw;
+	struct timespec curt;
+	
+	memset(&last_redraw, 0, sizeof(last_redraw));
+	
 	for(;;) {
 		XEvent event;
 		
 		if (!XPending(dis)) {
 			nanosleep(&timo, NULL);
 		}
-				
-		pthread_mutex_lock(&thread_create_destruct_mutex);
-		for (struct templeos_thread_info *ti = first_templeos_task; ti != NULL; ti = ti->next) {
-			if ((ti->t.Fs->display_flags & DISPLAY_SHOW) == 0) {
-				continue;
-			}
-			if (ti->window_failed) {
-				continue;
-			}
-			
-			struct CTask *task = ti->t.Fs;
-			if (!ti->window_initialized) {
-				if (DEBUG_X11) {
-					fprintf(stderr, "Task %p/%s: creating window top=%ld bottom=%ld left=%ld right=%ld\n", task, task->task_name, task->win_top, task->win_bottom, task->win_left, task->win_right);
-				}
-				create_window(ti, dis, screen, black, white, visual, depth);
-				if (ti->t.Fs == sys_winmgr_thread.Fs) {
-					ti->dc = gr->dc2;
-					ti->text_base = gr->text_base;
-				} else {
-					ti->dc = (struct CDC *)call_templeos4(&sys_winmgr_thread, "DCNew", gr->dc2->width, gr->dc2->height, (uint64_t)sys_winmgr_thread.Fs, 0);
-					ti->text_base = malloc_for_templeos(text->rows*text->cols*sizeof(uint32_t), data_heap, true);
-				}
-			}
-			
-			if (ti->window_failed) {
-				continue;
-			}
-			
-			struct CDC *original_dc = gr->dc2;
-			uint32_t *original_text_base = gr->text_base;
-			gr->text_base = ti->text_base;
-			gr->dc2 = ti->dc;
-			
-			pthread_mutex_unlock(&thread_create_destruct_mutex);
-			call_templeos(&sys_winmgr_thread, "GrUpdateTextBG");
-			call_templeos(&sys_winmgr_thread, "GrUpdateTextFG");
-			
-			call_templeos1(&sys_winmgr_thread, "GrUpdateTaskWin", (uint64_t)task);
+		
+		clock_gettime(CLOCK_MONOTONIC, &curt);
+		
+		if (timespec_diff_gt(last_redraw, curt, timo.tv_nsec)) {
+			last_redraw = curt;
 			pthread_mutex_lock(&thread_create_destruct_mutex);
-			
-			gr->text_base = original_text_base;
-			gr->dc2 = original_dc;
-			
-			if (!ti->image_used_by_server) {
-				event.type = Expose;
-				event.xexpose.display = dis;
-				event.xexpose.window = ti->win;
-				event.xexpose.x = 0;
-				event.xexpose.y = 0;
-				event.xexpose.width = ti->image->width;
-				event.xexpose.height = ti->image->height;
-				event.xexpose.count = 0;
-				XSendEvent(dis, ti->win, True, ExposureMask, &event);
+			for (struct templeos_thread_info *ti = first_templeos_task; ti != NULL; ti = ti->next) {
+				if ((ti->t.Fs->display_flags & DISPLAY_SHOW) == 0) {
+					continue;
+				}
+				if (ti->window_failed) {
+					continue;
+				}
+				
+				struct CTask *task = ti->t.Fs;
+				if (!ti->window_initialized) {
+					if (DEBUG_X11) {
+						fprintf(stderr, "Task %p/%s: creating window top=%ld bottom=%ld left=%ld right=%ld\n", task, task->task_name, task->win_top, task->win_bottom, task->win_left, task->win_right);
+					}
+					create_window(ti, dis, screen, black, white, visual, depth);
+					if (ti->t.Fs == sys_winmgr_thread.Fs) {
+						ti->dc = gr->dc2;
+						ti->text_base = gr->text_base;
+					} else {
+						ti->dc = (struct CDC *)call_templeos4(&sys_winmgr_thread, "DCNew", gr->dc2->width, gr->dc2->height, (uint64_t)sys_winmgr_thread.Fs, 0);
+						ti->text_base = malloc_for_templeos(text->rows*text->cols*sizeof(uint32_t), data_heap, true);
+					}
+				}
+				
+				if (ti->window_failed) {
+					continue;
+				}
+				
+				struct CDC *original_dc = gr->dc2;
+				uint32_t *original_text_base = gr->text_base;
+				gr->text_base = ti->text_base;
+				gr->dc2 = ti->dc;
+				
+				pthread_mutex_unlock(&thread_create_destruct_mutex);
+				call_templeos(&sys_winmgr_thread, "GrUpdateTextBG");
+				call_templeos(&sys_winmgr_thread, "GrUpdateTextFG");
+				
+				call_templeos1(&sys_winmgr_thread, "GrUpdateTaskWin", (uint64_t)task);
+				pthread_mutex_lock(&thread_create_destruct_mutex);
+				
+				gr->text_base = original_text_base;
+				gr->dc2 = original_dc;
+				
+				if (!ti->image_used_by_server) {
+					event.type = Expose;
+					event.xexpose.display = dis;
+					event.xexpose.window = ti->win;
+					event.xexpose.x = 0;
+					event.xexpose.y = 0;
+					event.xexpose.width = ti->image->width;
+					event.xexpose.height = ti->image->height;
+					event.xexpose.count = 0;
+					XSendEvent(dis, ti->win, True, ExposureMask, &event);
+				}
 			}
+			pthread_mutex_unlock(&thread_create_destruct_mutex);
+			
+			XSync(dis, false);
 		}
-		pthread_mutex_unlock(&thread_create_destruct_mutex);
 		
 		XNextEvent(dis, &event);
 		
