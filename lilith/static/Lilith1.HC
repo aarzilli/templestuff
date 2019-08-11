@@ -37,6 +37,82 @@ _LILITH_UNLOCK_TASK::
 	NOP
 	RET
 
+_LILITH_WAIT_FOR_ENQUEUED_TASK::
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	
+	NOP
+	NOP
+	NOP
+	NOP
+	
+	NOP
+	NOP
+	NOP
+	NOP
+	RET
+	
+_LILITH_SIGNAL_ENQUEUED_TASK::
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	
+	NOP
+	NOP
+	NOP
+	NOP
+	
+	NOP
+	NOP
+	NOP
+	NOP
+	RET
+
+_LILITH_WAIT_FOR_IDLE_TASK::
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	
+	NOP
+	NOP
+	NOP
+	NOP
+	
+	NOP
+	NOP
+	NOP
+	NOP
+	RET
+
+_LILITH_SIGNAL_IDLE_TASK::
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	
+	NOP
+	NOP
+	NOP
+	NOP
+	
+	NOP
+	NOP
+	NOP
+	NOP
+	RET
+
 _LILITH_REPLACE_SYSCALL::
 	NOP
 	NOP
@@ -60,4 +136,11 @@ _LILITH_REPLACE_SYSCALL::
 
 public _extern _LILITH_LOCK_TASK U0 LilithLockTask(U8 *task=0);
 public _extern _LILITH_UNLOCK_TASK U0 LilithUnlockTask(U8 *task=0);
+
 public _extern _LILITH_REPLACE_SYSCALL U0 LilithReplaceSyscall(U8 *name, U8 *dest);
+
+public _extern _LILITH_WAIT_FOR_ENQUEUED_TASK U0 LilithWaitForEnqueuedTask(U8 *task=0);
+public _extern _LILITH_SIGNAL_ENQUEUED_TASK U0 LilithSignalEnqueuedTask(U8 *task=0);
+
+public _extern _LILITH_WAIT_FOR_IDLE_TASK U0 LilithWaitForIdleTask(U8 *task=0);
+public _extern _LILITH_SIGNAL_IDLE_TASK U0 LilithSignalIdleTask(U8 *task=0);

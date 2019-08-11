@@ -188,7 +188,9 @@ asm_syscall_TaskDerivedValsUpdate:
 	.globl asm_syscall_Yield
 	.type asm_syscall_Yield, @function
 asm_syscall_Yield:
-	// don't do anything
+	push_registers
+	call syscall_Yield
+	pop_registers
 	ret
 
 	.text
@@ -269,4 +271,44 @@ asm_lilith_replace_syscall:
 	call lilith_replace_syscall
 	pop_registers
 	ret $0x10
+
+	.text
+	.globl asm_lilith_wait_for_enqueued_task
+	.type asm_lilith_wait_for_enqueued_task, @function
+asm_lilith_wait_for_enqueued_task:
+	push_registers
+	movq 0x10(%rbp), %rdi
+	call lilith_wait_for_enqueued_task
+	pop_registers
+	ret $0x8
+
+	.text
+	.globl asm_lilith_signal_enqueued_task
+	.type asm_lilith_signal_enqueued_task, @function
+asm_lilith_signal_enqueued_task:
+	push_registers
+	movq 0x10(%rbp), %rdi
+	call lilith_signal_enqueued_task
+	pop_registers
+	ret $0x8
+
+	.text
+	.globl asm_lilith_wait_for_idle_task
+	.type asm_lilith_wait_for_idle_task, @function
+asm_lilith_wait_for_idle_task:
+	push_registers
+	movq 0x10(%rbp), %rdi
+	call lilith_wait_for_idle_task
+	pop_registers
+	ret $0x8
+
+	.text
+	.globl asm_lilith_signal_idle_task
+	.type asm_lilith_signal_idle_task, @function
+asm_lilith_signal_idle_task:
+	push_registers
+	movq 0x10(%rbp), %rdi
+	call lilith_signal_idle_task
+	pop_registers
+	ret $0x8
 

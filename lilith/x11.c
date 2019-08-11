@@ -121,7 +121,7 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 	
 	struct timespec timo;
 	timo.tv_sec = 0;
-	timo.tv_nsec = 16670000;
+	timo.tv_nsec = 16670000*2; // remove *2 to get 60fps
 	
 	struct timespec last_redraw;
 	struct timespec curt;

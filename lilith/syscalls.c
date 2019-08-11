@@ -744,7 +744,14 @@ void syscall_Busy(int64_t s) {
 }
 
 //void syscall_TaskDerivedValsUpdate(struct CTask *task, bool update_z_buf); NOP
-//void syscall_Yield(void); // _YIELD; NOP
+
+void syscall_Yield(void) { // _YIELD
+	struct templeos_thread t;
+	exit_templeos(&t);
+	pthread_yield();
+	enter_templeos(&t);
+}
+
 //uint64_t syscall_KbdTypeMatic(uint64_t); NOP
 
 uint64_t syscall_Spawn(uint64_t fp, uint8_t *data, uint8_t *task_name, int64_t task_cpu, struct CTask *parent, int64_t stk_size, int64_t flags) {
@@ -863,5 +870,41 @@ void lilith_replace_syscall(char *name, uint8_t *dest) {
 	struct templeos_thread t;
 	exit_templeos(&t);
 	trampoline_kernel_patch(&t, name, (void (*)(void))dest);
+	enter_templeos(&t);
+}
+
+void lilith_wait_for_enqueued_task(struct CTask *task) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	pthread_mutex_lock(&(task->lilith_task_mutex));
+	pthread_cond_wait(&(task->lilith_enqueued_cond), &(task->lilith_task_mutex));
+	pthread_mutex_unlock(&(task->lilith_task_mutex));
+	enter_templeos(&t);
+}
+
+void lilith_signal_enqueued_task(struct CTask *task) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	pthread_mutex_lock(&(task->lilith_task_mutex));
+	pthread_cond_broadcast(&(task->lilith_enqueued_cond));
+	pthread_mutex_unlock(&(task->lilith_task_mutex));
+	enter_templeos(&t);
+}
+
+void lilith_wait_for_idle_task(struct CTask *task) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	pthread_mutex_lock(&(task->lilith_task_mutex));
+	pthread_cond_wait(&(task->lilith_idle_cond), &(task->lilith_task_mutex));
+	pthread_mutex_unlock(&(task->lilith_task_mutex));
+	enter_templeos(&t);
+}
+
+void lilith_signal_idle_task(struct CTask *task) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	pthread_mutex_lock(&(task->lilith_task_mutex));
+	pthread_cond_broadcast(&(task->lilith_idle_cond));
+	pthread_mutex_unlock(&(task->lilith_task_mutex));
 	enter_templeos(&t);
 }

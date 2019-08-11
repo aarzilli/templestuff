@@ -106,7 +106,11 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Gs->addr = t->Gs;
 	t->Fs = malloc_for_templeos(sizeof(struct CTask), code_heap, true);
 	t->Fs = (struct CTask *)calloc(1, sizeof(struct CTask));
+	
 	pthread_mutex_init(&(t->Fs->lilith_task_mutex), NULL);
+	pthread_cond_init(&(t->Fs->lilith_enqueued_cond), NULL);
+	pthread_cond_init(&(t->Fs->lilith_idle_cond), NULL);
+	
 	t->Fs->addr = t->Fs;
 	t->Fs->next_task = t->Fs->last_task = t->Fs->next_input_filter_task = t->Fs->last_input_filter_task = t->Fs;
 	t->Fs->gs = t->Gs;

@@ -24,6 +24,10 @@ extern void asm_syscall_CallStkGrow(void);
 extern void asm_lilith_lock_task(void);
 extern void asm_lilith_unlock_task(void);
 extern void asm_lilith_replace_syscall(void);
+extern void asm_lilith_wait_for_enqueued_task(void);
+extern void asm_lilith_signal_enqueued_task(void);
+extern void asm_lilith_wait_for_idle_task(void);
+extern void asm_lilith_signal_idle_task(void);
 void setup_syscall_trampolines(void) {
 	trampoline_kernel_patch(NULL, "RawPutChar", &asm_syscall_RawPutChar);
 	trampoline_kernel_patch(NULL, "DrvLock", &asm_syscall_DrvLock);

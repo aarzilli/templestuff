@@ -7,9 +7,7 @@ U0 lilith_TaskRstAwaitingMsg(CTask *task=NULL)
   do {
     if (TaskValidate(task)) {
       LBtr(&task->task_flags,TASKf_AWAITING_MSG);
-      LilithLockTask(task);
-      LilithSignal(task);
-      LilithUnlockTask(task);
+      LilithSignalEnqueuedTask(task);
     } else
       break;
   } while (task=task->popup_task);
@@ -30,15 +28,20 @@ CJob *lilith_TaskExe(CTask *srv,CTask *master,U8 *data,I64 flags)
   res->aux_str=AStrNew(data);
   res->ctrl=&srv->srv_ctrl;
 
-  LilithLockTask(srv);
-  LBtr(&srv->task_flags,TASKf_IDLE);
-  QueIns(res,srv->srv_ctrl.last_waiting);
-  TaskRstAwaitingMsg(srv);
-  if (Bt(&flags,JOBf_WAKE_MASTER)) {
-    Suspend(master);
-    Yield;
+  while (LBts(&srv->srv_ctrl.flags,JOBCf_LOCKED))
+    PAUSE
+  if (!TaskValidate(srv)) {
+    LBtr(&srv->srv_ctrl.flags,JOBCf_LOCKED);
+    JobDel(res);
+    return NULL;
+  } else {
+    LBtr(&srv->task_flags,TASKf_IDLE);
+    QueIns(res,srv->srv_ctrl.last_waiting);
+    TaskRstAwaitingMsg(srv);
+    if (Bt(&flags,JOBf_WAKE_MASTER)) {
+      Suspend(master);
+    }
   }
-  LilithUnlockTask(srv);
   return res;
 }
 
@@ -72,7 +75,8 @@ CJob *lilith_TaskText(CTask *srv,CTask *master,U8 *data,I64 flags)
   }
   LilithUnlockTask(srv);
   res->ctrl=&task->srv_ctrl;
-  LilithLockTask(task);
+  while (LBts(&task->srv_ctrl.flags,JOBCf_LOCKED))
+    PAUSE
   if (!TaskValidate(task)) {
     JobDel(res);
     res=NULL;
@@ -82,7 +86,6 @@ CJob *lilith_TaskText(CTask *srv,CTask *master,U8 *data,I64 flags)
     QueIns(res,task->srv_ctrl.last_waiting);
     LBtr(&task->srv_ctrl.flags,JOBCf_LOCKED);
   }
-  LilithUnlockTask(task);
   return res;
 }
 
@@ -109,7 +112,7 @@ CJob *lilith_TaskMsg(CTask *_srv,CTask *master,
     tmpc1=AMAllocIdent(tmpc);
     QueIns(tmpc1,sys_macro_head.last);
   }
-  LilithLockTask(srv)
+  LilithLockTask(srv);
   while (Bt(&srv->task_flags,TASKf_FILTER_INPUT) &&
 	!Bt(&flags,JOBf_DONT_FILTER)) {
     CTask *srv2=srv->next_input_filter_task;
@@ -117,21 +120,18 @@ CJob *lilith_TaskMsg(CTask *_srv,CTask *master,
     srv=srv2;
     LilithLockTask(srv);
   }
-  tmpc->ctrl=&srv->srv_ctrl;
   LilithUnlockTask(srv);
+  tmpc->ctrl=&srv->srv_ctrl;
   while (LBts(&srv->srv_ctrl.flags,JOBCf_LOCKED))
     PAUSE
   if (!TaskValidate(srv)) {
     JobDel(tmpc);
     tmpc=NULL;
   } else {
-    LilithLockTask(srv);
     LBtr(&srv->task_flags,TASKf_IDLE);
     TaskRstAwaitingMsg(srv);
     QueIns(tmpc,srv->srv_ctrl.last_waiting);
     LBtr(&srv->srv_ctrl.flags,JOBCf_LOCKED);
-    LilithSignal(srv);
-    LilithUnlockTask(srv);
   }
   if (msg_code<0) //Down-Up
     lilith_TaskMsg(_srv,master,-msg_code+1,arg1,arg2,flags);
@@ -140,12 +140,184 @@ CJob *lilith_TaskMsg(CTask *_srv,CTask *master,
 
 LilithReplaceSyscall("TaskMsg", &lilith_TaskMsg);
 
-//TODO: JobResScan
-//TODO: TaskWait (wait on lilith_job_cond until the queue is empty)
-//TODO: JobRunOne
-//TODO: JobsHndlr (remember to check if the queue is empty when we exit and signal lilith_job_cond if it is)
-//TODO: Suspend
-//TODO: Yield (check TASKf_AWAITING_MSG in task->task_flags and if it's set wait on lilith_job_cond variable -- also wait if JobResGet is the caller)
+Bool lilith_JobResScan(CJob *rqst=NULL,I64 *_res=NULL)
+{//Check rqst complete, return with or without.
+  CJobCtrl *ctrl;
+  CJob *tmpc,*tmpc1;
+  if (!rqst || Bt(&rqst->flags,JOBf_DONE)) {
+    if (!rqst || rqst->master_task)
+      ctrl=&Fs->srv_ctrl;
+    else
+      ctrl=rqst->ctrl;
+    while (LBts(&ctrl->flags,JOBCf_LOCKED))
+      PAUSE
+    tmpc1=&ctrl->next_done;
+    tmpc=tmpc1->next;
+    while (tmpc!=tmpc1) {
+      if (!rqst || rqst==tmpc) {
+	QueRem(tmpc);
+	LBtr(&ctrl->flags,JOBCf_LOCKED);
+	if (_res)
+	  *_res=tmpc->res;
+	JobDel(tmpc);
+	return TRUE;
+      }
+      tmpc=tmpc->next;
+    }
+    LBtr(&ctrl->flags,JOBCf_LOCKED);
+  }
+  if (_res)
+    *_res=0;
+  return FALSE;
+}
+
+LilithReplaceSyscall("JobResScan", &lilith_JobResScan);
+
+U0 lilith_TaskWait(CTask *task=NULL,Bool cmd_line_pmt=FALSE)
+{//Wait for idle.
+  CTask *task1;
+  CJob *tmpc1;
+  if (!task) task=Fs;
+  if (TaskValidate(task)) {
+    while (TRUE) {
+      task1=task->last_input_filter_task;
+      tmpc1=&task1->srv_ctrl.next_waiting;
+      if (task1==Fs || !TaskValidate(task1) ||
+	    tmpc1==tmpc1->next && Bt(&task1->task_flags,TASKf_IDLE) &&
+	    (!cmd_line_pmt || Bt(&task1->task_flags,TASKf_CMD_LINE_PMT)))
+	break;
+      LilithWaitForIdleTask(task1);
+    }
+  }
+}
+
+LilithReplaceSyscall("TaskWait", &lilith_TaskWait);
+
+#define JOB_DONE	0
+#define JOB_CONT	1
+#define JOB_EXIT	2
+
+I64 lilith_JobRunOne(I64 run_flags,CJobCtrl *ctrl)
+{//Called with ctrl->flags,JOBCf_LOCKED.
+  CJob *tmpc=ctrl->next_waiting;
+  CTask   *master;
+  I64 res,flags=tmpc->flags,old_flags=GetRFlags;
+  if (Bt(&flags,JOBf_EXIT_ON_COMPLETE))
+    res=JOB_EXIT;
+  else
+    res=JOB_CONT;
+  switch (tmpc->job_code) {
+    case JOBT_SPAWN_TASK:
+      QueRem(tmpc);
+      LBts(&tmpc->flags,JOBf_DISPATCHED);
+      LBtr(&ctrl->flags,JOBCf_LOCKED);
+      if (tmpc->aux_str)
+	tmpc->spawned_task=Spawn(tmpc->addr,tmpc->fun_arg,
+	      tmpc->aux_str,,tmpc->aux1,tmpc->aux2,tmpc->flags);
+      else
+	tmpc->spawned_task=Spawn(tmpc->addr,tmpc->fun_arg,
+	      "Unnamed",,tmpc->aux1,tmpc->aux2,tmpc->flags);
+      break;
+    case JOBT_CALL:
+      QueRem(tmpc);
+      LBts(&tmpc->flags,JOBf_DISPATCHED);
+      LBtr(&ctrl->flags,JOBCf_LOCKED);
+      SetRFlags(run_flags);
+      LBtr(&Fs->task_flags,TASKf_IDLE);
+      try
+	      tmpc->res=(*tmpc->addr)(tmpc->fun_arg);
+      catch
+	Fs->catch_except=TRUE;
+      SetRFlags(old_flags);
+      break;
+    case JOBT_EXE_STR:
+      QueRem(tmpc);
+      LBts(&tmpc->flags,JOBf_DISPATCHED);
+      LBtr(&ctrl->flags,JOBCf_LOCKED);
+      SetRFlags(run_flags);
+      LBtr(&Fs->task_flags,TASKf_IDLE);
+      try
+	      tmpc->res=ExePrint("%s",tmpc->aux_str);
+      catch
+	Fs->catch_except=TRUE;
+      SetRFlags(old_flags);
+      break;
+    default:
+      res=JOB_DONE;
+  }
+  if (res) {
+    if (master=tmpc->master_task) {
+      if (!Bt(&flags,JOBf_FREE_ON_COMPLETE)) {
+	while (LBts(&master->srv_ctrl.flags,JOBCf_LOCKED))
+	  PAUSE
+	QueIns(tmpc,master->srv_ctrl.last_done);
+	LBts(&tmpc->flags,JOBf_DONE);
+	LBtr(&master->srv_ctrl.flags,JOBCf_LOCKED);
+	SetRFlags(old_flags);
+      }
+      if (Bt(&flags,JOBf_FOCUS_MASTER) &&
+	    !Bt(&master->win_inhibit,WIf_SELF_FOCUS))
+	sys_focus_task=master;
+      if (Bt(&flags,JOBf_WAKE_MASTER))
+	Suspend(master,FALSE);
+    }
+    if (Bt(&flags,JOBf_FREE_ON_COMPLETE))
+      JobDel(tmpc);
+    else if (!master) {
+      while (LBts(&ctrl->flags,JOBCf_LOCKED))
+	PAUSE;
+      QueIns(tmpc,ctrl->last_done);
+      LBts(&tmpc->flags,JOBf_DONE);
+      LBtr(&ctrl->flags,JOBCf_LOCKED);
+      SetRFlags(old_flags);
+    }
+  }
+  return res;
+}
+
+LilithReplaceSyscall("JobRunOne", &lilith_JobRunOne);
+
+I64 lilith_JobsHndlr(I64 run_flags,CTask *task=NULL)
+{//Handle all waiting cmds and return.
+  I64 cnt=0,old_flags=GetRFlags;
+  if (!task) task=Fs;
+  while (TRUE) {
+    while (LBts(&task->srv_ctrl.flags,JOBCf_LOCKED))
+      PAUSE
+    if (task->srv_ctrl.next_waiting!=&task->srv_ctrl)
+      switch (lilith_JobRunOne(run_flags,&task->srv_ctrl)) {
+	case JOB_CONT:
+	  cnt++;
+	  break;
+	case JOB_EXIT:
+	  Exit;
+	case JOB_DONE:
+	  goto jh_done;
+      }
+    else
+      goto jh_done;
+  }
+jh_done:
+  LBtr(&task->srv_ctrl.flags,JOBCf_LOCKED);
+  LilithSignalIdleTask(task);
+  SetRFlags(old_flags);
+  return cnt;
+}
+
+LilithReplaceSyscall("JobsHndlr", &lilith_JobsHndlr);
+
+Bool lilith_Suspend(CTask *task=NULL,Bool state=TRUE)
+{//Tell scheduler to skip task.
+  Bool res;
+  if (!task) task=Fs;
+  if (TaskValidate(task))
+    res=LBEqu(&task->task_flags,TASKf_SUSPENDED,state);
+  else
+    res=FALSE;
+  return res;
+}
+
+LilithReplaceSyscall("Suspend", &lilith_Suspend);
 
 I64 lilith_ScanMsg(I64 *_arg1=NULL,I64 *_arg2=NULL,I64 mask=~1,CTask *task=NULL)
 {/*Check for a message of type specified by a one in the mask.
@@ -221,7 +393,7 @@ I64 lilith_GetKey(I64 *_scan_code=NULL,Bool echo=FALSE,Bool raw_cursor=FALSE)
     }
     LBts(&Fs->task_flags,TASKf_IDLE);
     LBts(&Fs->task_flags,TASKf_AWAITING_MSG);
-    Yield;
+    LilithWaitForEnqueuedTask(Fs);
     LBtr(&Fs->task_flags,TASKf_IDLE);
   }
   if (IsRaw && raw_cursor && cursor_on)

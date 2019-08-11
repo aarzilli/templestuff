@@ -212,6 +212,10 @@ int main(int argc, char *argv[]) {
 			trampoline_kernel_patch(&t, "LilithLockTask", asm_lilith_lock_task);
 			trampoline_kernel_patch(&t, "LilithUnlockTask", asm_lilith_unlock_task);
 			trampoline_kernel_patch(&t, "LilithReplaceSyscall", asm_lilith_replace_syscall);
+			trampoline_kernel_patch(&t, "LilithWaitForEnqueuedTask", asm_lilith_wait_for_enqueued_task);
+			trampoline_kernel_patch(&t, "LilithSignalEnqueuedTask", asm_lilith_signal_enqueued_task);
+			trampoline_kernel_patch(&t, "LilithWaitForIdleTask", asm_lilith_wait_for_idle_task);
+			trampoline_kernel_patch(&t, "LilithSignalIdleTask", asm_lilith_signal_idle_task);
 		}
 		
 		call_templeos1(&t, "DbgMode", 0);

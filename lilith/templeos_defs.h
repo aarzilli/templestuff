@@ -187,6 +187,8 @@ struct CTask { //The Fs segment reg points to current CTask.
 	int64_t   user_data;
 	
 	pthread_mutex_t lilith_task_mutex;
+	pthread_cond_t lilith_enqueued_cond;
+	pthread_cond_t lilith_idle_cond;
 };
 
 struct CGrGlbls {
