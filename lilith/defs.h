@@ -116,9 +116,6 @@ extern struct templeos_thread_info *first_templeos_task;
 
 void *templeos_task_start(void *arg);
 
-void lilith_lock_task(struct CTask *task);
-void lilith_unlock_task(struct CTask *task);
-
 // templeos_hash_table.c //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "templeos_defs.h"

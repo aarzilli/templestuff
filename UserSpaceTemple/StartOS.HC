@@ -10,6 +10,7 @@ Option(0,0); //(0,0)=EchoOff   (0,1)=EchoOn
 #include "/Kernel/KernelB.HH"
 #include "/Kernel/KernelC.HH"
 #include "/Compiler/CompilerB.HH"
+#include "/Lilith2.HC"
 
 CDate compile_start = Now;
 

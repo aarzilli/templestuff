@@ -11,7 +11,6 @@ void syscall_RawPutChar(uint64_t c) {
 }
 
 //uint64_t syscall_DrvLock(uint64_t); NOP
-//uint64_t syscall_JobsHndlr(uint64_t); NOP
 
 void *syscall_MAlloc(uint64_t size, uint64_t mem_task) { // _MALLOC
 	stbm_heap *heap = (stbm_heap*)mem_task;
@@ -840,4 +839,29 @@ uint64_t syscall_CallStkGrow(int64_t stk_size_threshold, int64_t stk_size, uint6
 	pthread_exit(NULL);
 }
 
-//uint64_t syscall_TaskText(struct CTask *srv, struct CTask *master, uint8_t *data, int64_t flags); NOP
+void lilith_lock_task(struct CTask *task) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	if (task == NULL) {
+		task = t.Fs;
+	}
+	pthread_mutex_lock(&(task->lilith_task_mutex));
+	enter_templeos(&t);
+}
+
+void lilith_unlock_task(struct CTask *task) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	if (task == NULL) {
+		task = t.Fs;
+	}
+	pthread_mutex_unlock(&(task->lilith_task_mutex));
+	enter_templeos(&t);
+}
+
+void lilith_replace_syscall(char *name, uint8_t *dest) {
+	struct templeos_thread t;
+	exit_templeos(&t);
+	trampoline_kernel_patch(&t, name, (void (*)(void))dest);
+	enter_templeos(&t);
+}

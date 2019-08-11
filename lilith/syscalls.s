@@ -18,14 +18,6 @@ asm_syscall_DrvLock:
 	ret $0x8
 
 	.text
-	.globl asm_syscall_JobsHndlr
-	.type asm_syscall_JobsHndlr, @function
-asm_syscall_JobsHndlr:
-	// don't do anything
-	movq $0, %rax
-	ret $0x8
-
-	.text
 	.globl asm_syscall_MAlloc
 	.type asm_syscall_MAlloc, @function
 asm_syscall_MAlloc:
@@ -248,10 +240,33 @@ asm_syscall_CallStkGrow:
 	ret $0x18
 
 	.text
-	.globl asm_syscall_TaskText
-	.type asm_syscall_TaskText, @function
-asm_syscall_TaskText:
-	// don't do anything
-	movq $0, %rax
-	ret $0x20
+	.globl asm_lilith_lock_task
+	.type asm_lilith_lock_task, @function
+asm_lilith_lock_task:
+	push_registers
+	movq 0x10(%rbp), %rdi
+	call lilith_lock_task
+	pop_registers
+	ret $0x8
+
+	.text
+	.globl asm_lilith_unlock_task
+	.type asm_lilith_unlock_task, @function
+asm_lilith_unlock_task:
+	push_registers
+	movq 0x10(%rbp), %rdi
+	call lilith_unlock_task
+	pop_registers
+	ret $0x8
+
+	.text
+	.globl asm_lilith_replace_syscall
+	.type asm_lilith_replace_syscall, @function
+asm_lilith_replace_syscall:
+	push_registers
+	movq 0x10(%rbp), %rdi
+	movq 0x18(%rbp), %rsi
+	call lilith_replace_syscall
+	pop_registers
+	ret $0x10
 

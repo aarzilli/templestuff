@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	char *x11_enabled_str = getenv("LILITH_X11_ENABLED");
-	x11_enabled = (x11_display != NULL) && (x11_enabled_str != NULL) && (strlen(x11_enabled_str) != 0);
+	x11_enabled = (x11_display != NULL) && ((x11_enabled_str == NULL) || (strcmp(x11_enabled_str, "0") != 0));
 	
 	/*
 	char *cfgdir = fileconcat(getenv("HOME"), ".lilith", false);
@@ -206,12 +206,12 @@ int main(int argc, char *argv[]) {
 		char *p = "/Compiler.BIN.Z";
 		call_templeos3(&t, "Load", (uint64_t)p, LDF_SILENT, INT64_MAX);
 		
-		{
+		if (templeos_root != NULL) {
 			// this code fixes job management by replacing job control functions in the kernel with other functions
 			call_templeos2(&t, "ExeFile", (uint64_t)"/Lilith1.HC", 0);
-			trampoline_kernel_patch(&t, "LilithLockTask", (void (*)(void))lilith_lock_task);
-			trampoline_kernel_patch(&t, "LilithUnlockTask", (void (*)(void))lilith_unlock_task);
-			
+			trampoline_kernel_patch(&t, "LilithLockTask", asm_lilith_lock_task);
+			trampoline_kernel_patch(&t, "LilithUnlockTask", asm_lilith_unlock_task);
+			trampoline_kernel_patch(&t, "LilithReplaceSyscall", asm_lilith_replace_syscall);
 		}
 		
 		call_templeos1(&t, "DbgMode", 0);

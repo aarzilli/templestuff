@@ -599,23 +599,3 @@ void *templeos_task_start(void *arg) {
 	
 	return NULL;
 }
-void lilith_lock_task(struct CTask *task) {
-	struct templeos_thread t;
-	exit_templeos(&t);
-	if (task == NULL) {
-		task = t.Fs;
-	}
-	pthread_mutex_lock(&(task->lilith_task_mutex));
-	enter_templeos(&t);
-}
-
-void lilith_unlock_task(struct CTask *task) {
-	struct templeos_thread t;
-	exit_templeos(&t);
-	if (task == NULL) {
-		task = t.Fs;
-	}
-	pthread_mutex_unlock(&(task->lilith_task_mutex));
-	enter_templeos(&t);
-}
-
