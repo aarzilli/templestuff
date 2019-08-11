@@ -101,15 +101,19 @@ int arch_prctl(int code, unsigned long addr) {
 #define TASK_HASH_TABLE_SIZE	(1<<10)
 #define TMP_FILE_NAME "~/Tmp.DD.Z"
 
+void task_pthread_initialize(struct templeos_thread *t) {
+	pthread_mutex_init(&(t->Fs->lilith_task_mutex), NULL);
+	pthread_cond_init(&(t->Fs->lilith_enqueued_cond), NULL);
+	pthread_cond_init(&(t->Fs->lilith_idle_cond), NULL);
+}
+
 void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Gs = (struct CCPU *)calloc(1, sizeof(struct CCPU));
 	t->Gs->addr = t->Gs;
 	t->Fs = malloc_for_templeos(sizeof(struct CTask), code_heap, true);
 	t->Fs = (struct CTask *)calloc(1, sizeof(struct CTask));
 	
-	pthread_mutex_init(&(t->Fs->lilith_task_mutex), NULL);
-	pthread_cond_init(&(t->Fs->lilith_enqueued_cond), NULL);
-	pthread_cond_init(&(t->Fs->lilith_idle_cond), NULL);
+	task_pthread_initialize(t);
 	
 	t->Fs->addr = t->Fs;
 	t->Fs->next_task = t->Fs->last_task = t->Fs->next_input_filter_task = t->Fs->last_input_filter_task = t->Fs;
@@ -572,7 +576,6 @@ void *templeos_task_start(void *arg) {
 		return NULL;
 	}
 	
-	
 	call_templeos2(&ti->t, "TaskInit", (uint64_t)(ti->t.Fs), 0);
 	ti->t.Fs->hash_table->next = ti->t.Fs->parent_task->hash_table;
 	
@@ -586,6 +589,10 @@ void *templeos_task_start(void *arg) {
 		}
 	}
 	pthread_mutex_unlock(&thread_create_destruct_mutex);
+	
+	pthread_mutex_lock(&(ti->t.Fs->lilith_task_mutex));
+	pthread_cond_broadcast(&(ti->t.Fs->lilith_idle_cond));
+	pthread_mutex_unlock(&(ti->t.Fs->lilith_task_mutex));
 	
 	fflush(stdout);
 	fflush(stderr);

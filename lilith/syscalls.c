@@ -815,6 +815,8 @@ uint64_t syscall_Spawn(uint64_t fp, uint8_t *data, uint8_t *task_name, int64_t t
 	ti->data = data;
 	ti->stk_size = stk_size;
 	
+	task_pthread_initialize(&(ti->t));
+	
 	if (pthread_create(&ti->thread_id, &attr, templeos_task_start, ti) != 0) {
 		fprintf(stderr, "could not create thread: %s\n", strerror(errno));
 		free_for_templeos(task);
@@ -823,6 +825,10 @@ uint64_t syscall_Spawn(uint64_t fp, uint8_t *data, uint8_t *task_name, int64_t t
 	}
 	
 	pthread_attr_destroy(&attr);
+	
+	pthread_mutex_lock(&(ti->t.Fs->lilith_task_mutex));
+	pthread_cond_wait(&(ti->t.Fs->lilith_idle_cond), &(ti->t.Fs->lilith_task_mutex));
+	pthread_mutex_unlock(&(ti->t.Fs->lilith_task_mutex));
 	
 syscall_Spawn_finish:	
 	enter_templeos(&t);

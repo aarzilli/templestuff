@@ -1,6 +1,8 @@
 // This file replaces function from Kernel/Job.HC and some
 // Kernel/SerialDev/Message.HC with custom versions that work with lilith.
 
+#define DEBUG_JOBS 1
+
 U0 lilith_TaskRstAwaitingMsg(CTask *task=NULL)
 {//Pop-ups get parent messages so wake-up our pop-ups if we got a msg.
   if (!task) task=Fs;
@@ -51,6 +53,9 @@ CJob *lilith_TaskText(CTask *srv,CTask *master,U8 *data,I64 flags)
 {//Post StdIn text to servant task. Tell who the master task is.
   CJob *res;
   CTask *task;
+  if (DEBUG_JOBS) {
+    RawPrint(0, "Trying to send <%s> %d\n", data, TaskValidate(srv));
+  }
   if (!data || !TaskValidate(srv) || master && !TaskValidate(master) ||
 	srv->popup_task && !Bt(&srv->task_flags,TASKf_FILTER_INPUT))
     return NULL;
