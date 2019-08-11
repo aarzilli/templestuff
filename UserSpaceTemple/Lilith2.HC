@@ -1,8 +1,6 @@
 // This file replaces function from Kernel/Job.HC and some
 // Kernel/SerialDev/Message.HC with custom versions that work with lilith.
 
-#define DEBUG_JOBS 1
-
 U0 lilith_TaskRstAwaitingMsg(CTask *task=NULL)
 {//Pop-ups get parent messages so wake-up our pop-ups if we got a msg.
   if (!task) task=Fs;
@@ -53,9 +51,6 @@ CJob *lilith_TaskText(CTask *srv,CTask *master,U8 *data,I64 flags)
 {//Post StdIn text to servant task. Tell who the master task is.
   CJob *res;
   CTask *task;
-  if (DEBUG_JOBS) {
-    RawPrint(0, "Trying to send <%s> %d\n", data, TaskValidate(srv));
-  }
   if (!data || !TaskValidate(srv) || master && !TaskValidate(master) ||
 	srv->popup_task && !Bt(&srv->task_flags,TASKf_FILTER_INPUT))
     return NULL;
@@ -410,3 +405,43 @@ I64 lilith_GetKey(I64 *_scan_code=NULL,Bool echo=FALSE,Bool raw_cursor=FALSE)
 }
 
 LilithReplaceSyscall("GetKey", &lilith_GetKey);
+
+U0 lilith_InputFilterTask()
+{
+  CJob *tmpc,*tmpc1;
+  Bool old_filter;
+  I64 old_flags=GetRFlags;
+  Fs->win_inhibit=WIG_USER_TASK_DFT;
+  LBts(&Fs->task_flags,TASKf_INPUT_FILTER_TASK);
+  old_filter=LBts(&Fs->last_input_filter_task->task_flags,TASKf_FILTER_INPUT);
+  LBEqu(&Fs->task_flags,TASKf_FILTER_INPUT,old_filter);
+  LilithWaitForEnqueuedTask(Fs);
+  while (TRUE) {
+    JobsHndlr(old_flags);
+    tmpc1=&Fs->srv_ctrl.next_waiting;
+    tmpc=tmpc1->next;
+    if (tmpc==tmpc1)
+      break;
+    else {
+      if (tmpc->job_code==JOBT_TEXT_INPUT) {
+	QueRem(tmpc);
+	SetRFlags(old_flags);
+	try
+		ExePrint("%s",tmpc->aux_str);
+	catch
+	  Fs->catch_except=TRUE;
+	JobDel(tmpc);
+      } else
+	break;
+    }
+  }
+  LilithLockTask(Fs);
+  Fs->next_input_filter_task->last_input_filter_task=Fs->last_input_filter_task;
+  Fs->last_input_filter_task->next_input_filter_task=Fs->next_input_filter_task;
+  if (!old_filter)
+    LBtr(&Fs->last_input_filter_task->task_flags,TASKf_FILTER_INPUT);
+  LilithUnlockTask(Fs);
+  SetRFlags(old_flags);
+}
+
+LilithReplaceSyscall("InputFilterTask", &lilith_InputFilterTask);
