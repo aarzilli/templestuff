@@ -467,6 +467,23 @@ uint64_t call_templeos4(struct templeos_thread *t, char *name, uint64_t arg1, ui
 	return r;
 }
 
+extern uint64_t call_templeos6_asm(void *entry, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5, uint64_t arg6);
+
+uint64_t call_templeos6(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5, uint64_t arg6) {
+	void *entry = find_entry_point(t, name);
+	if (entry == NULL) {
+		fprintf(stderr, "Could not call %s\n", name);
+		exit(EXIT_FAILURE);
+	}
+	fflush(stdout);
+	fflush(stderr);
+	
+	enter_templeos(t);
+	uint64_t r = call_templeos6_asm(entry, arg1, arg2, arg3, arg4, arg5, arg6);
+	exit_templeos(t);
+	return r;
+}
+
 
 // malloc_for_templeos returns a chunk of memory of the specified size
 // allocated for TempleOS (TempleOS will be able to call Free on it).
@@ -601,7 +618,7 @@ void *templeos_task_start(void *arg) {
 	call_templeos1_asm(ti->fp, (uint64_t)ti->data);
 	exit_templeos(&ti->t);
 	
-	//TODO: handle task destruction (here, everywhere we call pthread_exit and also as callback to TaskEnd?
+	//TODO: handle task destruction (here, everywhere we call pthread_exit and also as callback to TaskEnd?)
 	if (DEBUG_TASKS) {
 		pthread_mutex_lock(&thread_create_destruct_mutex);
 		fprintf(stderr, "task finished %p/%s\n", ti->t.Fs, ti->t.Fs->task_name);

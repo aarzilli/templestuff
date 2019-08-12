@@ -128,6 +128,18 @@ call_templeos4_asm:
 	pop_registers_except_rax
 	ret
 
-	
+	.text
+	.globl call_templeos6_asm
+	.type call_templeos6_asm, @function
+call_templeos6_asm:
+	push_registers_except_rax
+	push %r9
+	push %r8
+	push %rcx
+	push %rdx
+	push %rsi
+	call *%rdi
+	pop_registers_except_rax
+	ret
 
 	.include "syscalls.s"

@@ -318,3 +318,59 @@ struct CTextGlbls {
   uint8_t	*vga_alias,*vga_text_alias;
   uint8_t	border_chars[16];
 };
+
+#define MSG_KEY_DOWN		2
+#define MSG_KEY_UP		3
+
+#define SCF_E0_PREFIX	(1<<7)
+#define SCF_KEY_UP	(1<<8)
+#define SCF_SHIFT	(1<<9)
+#define SCF_CTRL	(1<<10)
+#define SCF_ALT		(1<<11)
+#define SCF_CAPS	(1<<12)
+#define SCF_NUM		(1<<13)
+#define SCF_SCROLL	(1<<14)
+#define SCF_NEW_KEY	(1<<15)
+#define SCF_MS_L_DOWN	(1<<16)
+#define SCF_MS_R_DOWN	(1<<17)
+#define SCF_DELETE	(1<<18)
+#define SCF_INS 	(1<<19)
+#define SCF_NO_SHIFT	(1<<30)
+#define SCF_KEY_DESC	(1<<31)
+
+#define SC_ESC		0x01
+#define SC_BACKSPACE	0x0E
+#define SC_TAB		0x0F
+#define SC_ENTER	0x1C
+#define SC_SHIFT	0x2A
+#define SC_CTRL		0x1D
+#define SC_ALT		0x38
+#define SC_CAPS		0x3A
+#define SC_NUM		0x45
+#define SC_SCROLL	0x46
+#define SC_CURSOR_UP	0x48
+#define SC_CURSOR_DOWN	0x50
+#define SC_CURSOR_LEFT	0x4B
+#define SC_CURSOR_RIGHT 0x4D
+#define SC_PAGE_UP	0x49
+#define SC_PAGE_DOWN	0x51
+#define SC_HOME		0x47
+#define SC_END		0x4F
+#define SC_INS		0x52
+#define SC_DELETE	0x53
+#define SC_F1		0x3B
+#define SC_F2		0x3C
+#define SC_F3		0x3D
+#define SC_F4		0x3E
+#define SC_F5		0x3F
+#define SC_F6		0x40
+#define SC_F7		0x41
+#define SC_F8		0x42
+#define SC_F9		0x43
+#define SC_F10		0x44
+#define SC_F11		0x57
+#define SC_F12		0x58
+#define SC_PAUSE	0x61
+#define SC_GUI		0xDB
+#define SC_PRTSCRN1	0xAA
+#define SC_PRTSCRN2	0xB7

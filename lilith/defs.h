@@ -104,6 +104,8 @@ void *find_entry_point(struct templeos_thread *t, char *name);
 uint64_t call_templeos(struct templeos_thread *t, char *name);
 uint64_t call_templeos2(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2);
 void call_templeos3(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3);
+uint64_t call_templeos4(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4);
+uint64_t call_templeos6(struct templeos_thread *t, char *name, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5, uint64_t arg6);
 
 void *malloc_for_templeos(uint64_t size, stbm_heap *heap, bool zero);
 void free_for_templeos(void *p);

@@ -20,6 +20,7 @@
 #include <dirent.h>
 #include <time.h>
 #include <pthread.h>
+#include <ctype.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
