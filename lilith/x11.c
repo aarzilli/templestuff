@@ -132,7 +132,7 @@ void keyevent_convert(unsigned int state, unsigned int keycode, bool keyup, uint
 	}
 		
 	if ((keysym >= 0x20) && (keysym < 0x7f)) {
-		*pscancode = ascii_to_scancode1[keysym];
+		*pscancode = ascii_to_scancode1[keysym0];
 	} else if ((keysym >= XK_F1) && (keysym <= XK_F12)) {
 		*pscancode = (keysym - XK_F1) + SC_F1;
 	} else {
@@ -394,11 +394,6 @@ void x11_start(struct templeos_thread sys_winmgr_thread) {
 		XNextEvent(dis, &event);
 		
 		//TODO: handle window close
-		//TODO: handle keys
-		// - MSG_KEY_UP/MSG_KEY_DOWN
-		// - TaskMsg(task, 0, MSG_KEY_UP/MSG_KEY_DOWN, ScanCode2Char(arg2), arg2, 0);
-		// - arg2 is the scan code
-		// presumably key_down gets repeated as long as the key is held down
 		
 		switch (event.type) {
 		case Expose:
