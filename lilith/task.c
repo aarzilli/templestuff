@@ -111,7 +111,7 @@ void init_templeos(struct templeos_thread *t, void *stk_base_estimate) {
 	t->Gs = (struct CCPU *)calloc(1, sizeof(struct CCPU));
 	t->Gs->addr = t->Gs;
 	t->Fs = malloc_for_templeos(sizeof(struct CTask), code_heap, true);
-	t->Fs = (struct CTask *)calloc(1, sizeof(struct CTask));
+	//t->Fs = (struct CTask *)calloc(1, sizeof(struct CTask));
 	
 	task_pthread_initialize(t);
 	

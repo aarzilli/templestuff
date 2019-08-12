@@ -26,10 +26,6 @@ if (!Bt(&sys_run_level, RLf_RAW)) {
 	text.rows = GR_HEIGHT/FONT_HEIGHT;
 	text.border_chars[2] (I64)=0x0908070605040302;
 	text.border_chars[10](U32)=0x0D0C0B0A;
-	Fs->win_left=0;
-	Fs->win_right = text.cols-1;
-	Fs->win_top=0;
-	Fs->win_bottom = text.rows-1;
 }
 
 U8 *start_up_directory = StrNew(Fs->cur_dir);
@@ -55,11 +51,11 @@ sys_winmgr_task = adam_task; // TODO: this will eventually need to be removed
 //sys_winmgr_task->pix_height = 480;
 
 DocTermNew;
-WinVert(2,10);
+RawPrint(0, "Here\n");
 
 { // from WinMgrTask
-	WinHorz(0,TEXT_COLS-1);
-	WinVert(0,TEXT_ROWS-1);
+	WinHorz(0,TEXT_COLS);
+	WinVert(0,TEXT_ROWS);
 	LBts(&Fs->display_flags,DISPLAYf_NO_BORDER);
 	LBts(&Fs->display_flags,DISPLAYf_SHOW);
 	gr.dc->win_task=Fs;
